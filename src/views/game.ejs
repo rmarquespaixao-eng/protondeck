@@ -37,6 +37,20 @@
 </div>
 <% } %>
 
+<!-- Suporte a resolução (PCGamingWiki) -->
+<section class="pcgw-section" id="pcgw-section" data-appid="<%= game.appid %>">
+  <div class="pcgw-header">
+    <h2 class="pcgw-title">Suporte a resolução · PCGamingWiki</h2>
+    <div class="pcgw-actions">
+      <a class="pcgw-link" id="pcgw-page-link" href="#" target="_blank" rel="noopener" style="display:none">abrir wiki ↗</a>
+      <button type="button" class="pcgw-refresh" id="pcgw-refresh" title="Re-busca ignorando cache">↻</button>
+    </div>
+  </div>
+  <div class="pcgw-body" id="pcgw-body">
+    <p class="pcgw-loading">consultando wiki…</p>
+  </div>
+</section>
+
 <!-- Engine preset bar -->
 <div class="engine-bar">
   <span class="engine-label">
@@ -347,6 +361,96 @@
 </script>
 
 <script>
+  // ─── PCGamingWiki widescreen support ────────────────────
+  (function() {
+    var FEATURE_LABEL = {
+      widescreen:      'Widescreen 16:9',
+      multimonitor:    'Multi-monitor',
+      ultrawidescreen: 'Ultra-widescreen 21:9',
+      '4k':            '4K Ultra HD',
+      fov:             'Field of view (FOV)'
+    };
+    var STATE_LABEL = {
+      native:      'nativo',
+      hackable:    'mod / hack',
+      limited:     'limitado',
+      unsupported: 'não suporta',
+      unknown:     'sem info'
+    };
+    var FEATURE_ORDER = ['ultrawidescreen', 'widescreen', 'multimonitor', '4k', 'fov'];
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+      });
+    }
+
+    function renderPCGW(data) {
+      var body = document.getElementById('pcgw-body');
+      var pageLink = document.getElementById('pcgw-page-link');
+
+      if (data.pageUrl) {
+        pageLink.href = data.pageUrl;
+        pageLink.style.display = '';
+      } else {
+        pageLink.style.display = 'none';
+      }
+
+      if (!data.found) {
+        body.innerHTML = '<p class="pcgw-empty">' + escapeHTML(data.reason || 'sem info na wiki') + '</p>';
+        return;
+      }
+
+      var rows = [];
+      FEATURE_ORDER.forEach(function(key) {
+        var f = data.features[key];
+        if (!f) return;
+        rows.push(
+          '<div class="pcgw-row pcgw-state-' + escapeHTML(f.state) + '">' +
+            '<div class="pcgw-row-label">' + escapeHTML(FEATURE_LABEL[key] || key) + '</div>' +
+            '<div class="pcgw-row-state">' +
+              '<span class="pcgw-badge pcgw-badge-' + escapeHTML(f.state) + '">' + escapeHTML(STATE_LABEL[f.state] || f.state) + '</span>' +
+            '</div>' +
+            '<div class="pcgw-row-notes">' + (f.notes ? escapeHTML(f.notes) : '<span class="pcgw-muted">—</span>') + '</div>' +
+          '</div>'
+        );
+      });
+
+      if (!rows.length) {
+        body.innerHTML = '<p class="pcgw-empty">A página existe na wiki mas a tabela de Video não foi reconhecida.</p>';
+        return;
+      }
+
+      var uw = data.features.ultrawidescreen;
+      var hint = '';
+      if (uw) {
+        if (uw.state === 'hackable') {
+          hint = '<div class="pcgw-hint pcgw-hint-warn">Ultra-widescreen 21:9 via mod/hack — veja as notas e o link da wiki pra instruções.</div>';
+        } else if (uw.state === 'unsupported') {
+          hint = '<div class="pcgw-hint pcgw-hint-err">Ultra-widescreen 21:9 não suportado nativamente. Considere <code>gamescope -W/-H</code> para forçar resolução.</div>';
+        }
+      }
+
+      body.innerHTML = hint + '<div class="pcgw-table">' + rows.join('') + '</div>' +
+        '<p class="pcgw-fetched">atualizado em ' + new Date(data.fetched_at).toLocaleString() + '</p>';
+    }
+
+    function loadPCGW(force) {
+      var body = document.getElementById('pcgw-body');
+      body.innerHTML = '<p class="pcgw-loading">consultando wiki…</p>';
+      var url = '/api/game/' + GAME_APPID + '/widescreen' + (force ? '?force=1' : '');
+      fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(renderPCGW)
+        .catch(function(err) {
+          body.innerHTML = '<p class="pcgw-empty pcgw-err">erro: ' + escapeHTML(err.message) + '</p>';
+        });
+    }
+
+    document.getElementById('pcgw-refresh').addEventListener('click', function() { loadPCGW(true); });
+    loadPCGW(false);
+  })();
+
   // ─── Monitor picker (afeta só o preview da launch curada) ───
   const SDL_RX = /SDL_VIDEO_FULLSCREEN_DISPLAYS=\S+\s?/;
   function applyMonitor(pre, monitor) {

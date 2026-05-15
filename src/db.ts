@@ -84,6 +84,13 @@ db.exec(`
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS pcgw_cache (
+    appid TEXT PRIMARY KEY,
+    payload TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    status INTEGER NOT NULL
+  );
 `);
 
 export type GameRow = {
@@ -396,4 +403,32 @@ export function createUser(username: string, passwordHash: string): UserRow {
   const now = new Date().toISOString();
   const info = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)').run(username, passwordHash, now);
   return { id: Number(info.lastInsertRowid), username, password_hash: passwordHash, created_at: now };
+}
+
+// ───────── PCGamingWiki cache ─────────
+
+export type PCGWCacheRow = {
+  appid: string;
+  payload: string;
+  fetched_at: string;
+  status: number;
+};
+
+export function getPCGWCache(appid: string, ttlMs: number): PCGWCacheRow | null {
+  const row = db.prepare('SELECT appid, payload, fetched_at, status FROM pcgw_cache WHERE appid = ?').get(appid) as PCGWCacheRow | undefined;
+  if (!row) return null;
+  const age = Date.now() - new Date(row.fetched_at).getTime();
+  if (age > ttlMs) return null;
+  return row;
+}
+
+export function setPCGWCache(appid: string, payload: string, status: number): void {
+  db.prepare(`
+    INSERT INTO pcgw_cache (appid, payload, fetched_at, status)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(appid) DO UPDATE SET
+      payload = excluded.payload,
+      fetched_at = excluded.fetched_at,
+      status = excluded.status
+  `).run(appid, payload, new Date().toISOString(), status);
 }

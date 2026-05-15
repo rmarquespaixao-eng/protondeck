@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { getGame, updateGameUserFields, clearGameUserFields, getSystemInfo } from '../db.js';
 import { syncFromSteamLaunch } from '../sync.js';
 import { fetchCommunityReports } from '../protondb-community.js';
+import { fetchWidescreenInfo } from '../pcgw.js';
 import {
   ENV_OPTIONS, ARG_OPTIONS, WRAPPER_OPTIONS, GAMESCOPE_OPTIONS,
   RESOLUTION_FORMATS, ENGINE_PRESETS
@@ -81,6 +82,16 @@ export async function gameRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: GameParams }>('/api/game/:appid/community', async (req, reply) => {
     try {
       const data = await fetchCommunityReports(req.params.appid);
+      return reply.send(data);
+    } catch (err) {
+      fastify.log.error(err);
+      return reply.code(502).send({ error: (err as Error).message });
+    }
+  });
+
+  fastify.get<{ Params: GameParams; Querystring: { force?: string } }>('/api/game/:appid/widescreen', async (req, reply) => {
+    try {
+      const data = await fetchWidescreenInfo(req.params.appid, { force: req.query.force === '1' });
       return reply.send(data);
     } catch (err) {
       fastify.log.error(err);
