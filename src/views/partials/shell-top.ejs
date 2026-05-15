@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title><%= title %> · steam-config-panel</title>
+  <title><%= title %> · ProtonDeck</title>
   <link rel="stylesheet" href="/public/style.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <a class="sidebar-brand" href="/">
-        steam-config-panel
+        ProtonDeck
         <span class="sidebar-brand-mini">Proton launch options</span>
       </a>
 
@@ -31,6 +31,14 @@
         <form method="post" action="/sync">
           <button type="submit" class="sidebar-sync" title="Re-roda steam-launch dashboard:snapshot">↻ Sync biblioteca</button>
         </form>
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+          <div class="sidebar-user">
+            <span class="sidebar-user-name" title="Logado como <%= currentUser.username %>"><%= currentUser.username %></span>
+            <form method="post" action="/logout" class="sidebar-logout-form">
+              <button type="submit" class="sidebar-logout" title="Sair">Sair</button>
+            </form>
+          </div>
+        <% } %>
         <div class="sidebar-version">v0.2</div>
       </div>
     </aside>

@@ -22,7 +22,8 @@ export async function indexRoutes(fastify: FastifyInstance) {
       stats,
       system,
       filters: { tier: tier ?? '', search: search ?? '', installed: installed ?? '' },
-      empty: games.length === 0
+      empty: games.length === 0,
+      currentUser: req.currentUser
     });
   });
 }

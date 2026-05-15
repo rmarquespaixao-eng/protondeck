@@ -77,6 +77,13 @@ db.exec(`
     steam_id64 TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
 `);
 
 export type GameRow = {
@@ -366,4 +373,27 @@ export function setSteamConfig(cfg: { api_key: string; steam_id64: string }): vo
       steam_id64 = excluded.steam_id64,
       updated_at = excluded.updated_at
   `).run({ ...cfg, updated_at: new Date().toISOString() });
+}
+
+// ───────── Users / auth ─────────
+
+export type UserRow = {
+  id: number;
+  username: string;
+  password_hash: string;
+  created_at: string;
+};
+
+export function countUsers(): number {
+  return (db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number }).n;
+}
+
+export function getUserByUsername(username: string): UserRow | undefined {
+  return db.prepare('SELECT id, username, password_hash, created_at FROM users WHERE username = ?').get(username) as UserRow | undefined;
+}
+
+export function createUser(username: string, passwordHash: string): UserRow {
+  const now = new Date().toISOString();
+  const info = db.prepare('INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)').run(username, passwordHash, now);
+  return { id: Number(info.lastInsertRowid), username, password_hash: passwordHash, created_at: now };
 }

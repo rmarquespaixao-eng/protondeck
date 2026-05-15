@@ -110,6 +110,7 @@ export async function configRoutes(fastify: FastifyInstance) {
       compatRules: COMPAT_RULES,
       enginePreset,
       enginePresetsAll: ENGINE_PRESETS,
+      currentUser: req.currentUser,
       ...parsed,
     });
   });

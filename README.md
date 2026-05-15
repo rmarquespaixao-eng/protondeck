@@ -25,8 +25,19 @@ Stack: Fastify 5 + TypeScript + better-sqlite3 + EJS (server-rendered, sem SPA).
 
 ```bash
 npm install
+cp .env.example .env
+# Gere a chave de sessao (32 bytes hex) e cole em SESSION_KEY no .env:
+openssl rand -hex 32
 npm run sync     # popula data/panel.db com o snapshot inicial (chama steam-launch)
 npm run dev      # http://localhost:3030
+```
+
+No primeiro acesso, o painel redireciona pra `/setup` pra criar a conta admin
+(user/senha persistidos no SQLite com bcrypt). Single-user: nao tem cadastro
+aberto, so o admin inicial. Pra resetar, apague a linha em `users`:
+
+```bash
+sqlite3 data/panel.db "DELETE FROM users;"
 ```
 
 ## Workflow
@@ -43,6 +54,7 @@ npm run dev      # http://localhost:3030
   geradas + colunas `user_launch_options` / `user_notes` que sobrevivem aos syncs.
 - `snapshots` — historico de cada sync (raw JSON).
 - `system_info` — uma linha singleton com hardware/monitor detectado no ultimo sync.
+- `users` — conta admin (single-user), `password_hash` bcrypt.
 
 ## Estrutura
 

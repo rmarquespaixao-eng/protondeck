@@ -73,12 +73,13 @@ function gameContextOf(game: ReturnType<typeof getGame>): GameContext {
 export async function aiRoutes(fastify: FastifyInstance) {
 
   // ───── settings ─────
-  fastify.get('/settings/ai', async (_req, reply) => {
+  fastify.get('/settings/ai', async (req, reply) => {
     const cfg = getAIConfig();
     return reply.view('ai-settings.ejs', {
       cfg,
       providerModels: PROVIDER_MODELS,
       defaultBaseUrls: DEFAULT_BASE_URLS,
+      currentUser: req.currentUser,
     });
   });
 

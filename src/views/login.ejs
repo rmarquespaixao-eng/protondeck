@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= mode === 'setup' ? 'Setup' : 'Login' %> · ProtonDeck</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body class="auth-body">
+  <main class="auth-card">
+    <h1 class="auth-brand">ProtonDeck</h1>
+    <p class="auth-subtitle">
+      <% if (mode === 'setup') { %>
+        Primeira execução — crie a conta admin
+      <% } else { %>
+        Entre pra acessar o painel
+      <% } %>
+    </p>
+    <% if (error) { %>
+      <div class="auth-error"><%= error %></div>
+    <% } %>
+    <form method="post" action="<%= mode === 'setup' ? '/setup' : '/login' %>" class="auth-form">
+      <label class="auth-label">
+        Usuário
+        <input type="text" name="username" value="<%= username %>" required autofocus autocomplete="username" minlength="3" />
+      </label>
+      <label class="auth-label">
+        Senha
+        <input type="password" name="password" required autocomplete="<%= mode === 'setup' ? 'new-password' : 'current-password' %>" minlength="<%= mode === 'setup' ? 8 : 1 %>" />
+      </label>
+      <% if (mode === 'setup') { %>
+        <label class="auth-label">
+          Confirme a senha
+          <input type="password" name="password_confirm" required autocomplete="new-password" minlength="8" />
+        </label>
+      <% } %>
+      <button type="submit" class="auth-submit"><%= mode === 'setup' ? 'Criar admin' : 'Entrar' %></button>
+    </form>
+  </main>
+</body>
+</html>

@@ -22,7 +22,7 @@ export async function gameRoutes(fastify: FastifyInstance) {
     const system = getSystemInfo() as { monitors?: Monitor[] } | null;
     const monitors = system?.monitors ?? [];
     const currentMonitor = game.launch_options?.match(/SDL_VIDEO_FULLSCREEN_DISPLAYS=(\S+)/)?.[1] ?? null;
-    return reply.view('game.ejs', { game, notes, monitors, currentMonitor });
+    return reply.view('game.ejs', { game, notes, monitors, currentMonitor, currentUser: req.currentUser });
   });
 
   fastify.post<{ Params: GameParams; Body: GameBody }>('/game/:appid', async (req, reply) => {

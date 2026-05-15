@@ -7,9 +7,9 @@ type SteamSettingsBody = {
 };
 
 export async function steamRoutes(fastify: FastifyInstance) {
-  fastify.get('/settings/steam', async (_req, reply) => {
+  fastify.get('/settings/steam', async (req, reply) => {
     const cfg = getSteamConfig();
-    return reply.view('steam-settings.ejs', { cfg });
+    return reply.view('steam-settings.ejs', { cfg, currentUser: req.currentUser });
   });
 
   fastify.post<{ Body: SteamSettingsBody }>('/settings/steam', async (req, reply) => {
