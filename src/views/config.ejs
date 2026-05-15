@@ -1,0 +1,953 @@
+<%- include('partials/shell-top.ejs', { title: game.name + ' · Configurações', active: 'library' }) %>
+
+    <a class="back" href="/game/<%= game.appid %>">&larr; voltar para <%= game.name %></a>
+    <div class="page-header">
+      <h1>Configurações</h1>
+      <span class="page-sub"><%= game.name %></span>
+    </div>
+
+    <!-- Engine preset bar -->
+    <div class="engine-bar">
+      <span class="engine-label">
+        Engine: <strong><%= game.engine || 'unknown' %></strong>
+        <span class="badge config-<%= game.engine_source || 'generic' %>" style="margin-left:4px"><%= game.engine_source || 'generic' %></span>
+      </span>
+      <% if (enginePreset) { %>
+      <button type="button" id="btn-engine-preset" class="btn-preset"
+        title="<%= enginePreset.note %>">
+        Aplicar preset <%= enginePreset.label %>
+      </button>
+      <% } %>
+      <select id="manual-preset-select" style="background:var(--panel-2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px">
+        <option value="">— outro engine —</option>
+        <% Object.keys(enginePresetsAll).forEach(function(eid) { %>
+        <option value="<%= eid %>"><%= enginePresetsAll[eid].label %></option>
+        <% }); %>
+      </select>
+      <button type="button" id="btn-manual-preset" class="btn-preset btn-preset-secondary">Aplicar</button>
+    </div>
+    <% if (enginePreset) { %>
+    <p class="engine-note"><%= enginePreset.note %></p>
+    <% } %>
+
+    <form method="post" action="/game/<%= game.appid %>/config" id="config-form">
+      <input type="hidden" name="launch_options" id="hidden-launch" />
+
+      <div class="builder-layout">
+
+        <!-- ========== LEFT: Options ========== -->
+        <div class="options-col">
+
+          <!-- Wrappers -->
+          <section class="opt-cat">
+            <div class="opt-cat-title">Wrappers — comandos que envolvem o jogo</div>
+
+            <% wrapperOptions.forEach(function(w) { %>
+            <div class="opt-row">
+              <input type="checkbox" id="wrap_<%= w.key %>" class="wrap-cb" data-prefix="<%= w.prefix %>"
+                <%= currentWrappers.includes(w.key) ? 'checked' : '' %> />
+              <div class="opt-meta">
+                <label for="wrap_<%= w.key %>"><strong><%= w.label %></strong> <code class="flag-code"><%= w.prefix %></code></label>
+                <span class="desc"><%= w.description %></span>
+              </div>
+            </div>
+            <% }); %>
+
+            <!-- Gamescope (special wrapper) -->
+            <div class="opt-row">
+              <input type="checkbox" id="wrap_gamescope" class="wrap-cb" data-is-gamescope="1"
+                <%= gamescopeEnabled ? 'checked' : '' %> />
+              <div class="opt-meta">
+                <label for="wrap_gamescope"><strong>Gamescope</strong> <code class="flag-code">gamescope [opts] --</code></label>
+                <span class="desc">Compositor Valve — força resolução, confina cursor, upscale FSR/NIS. Solução ideal quando o jogo não detecta o monitor.</span>
+                <details class="opt-tip">
+                  <summary>quando usar?</summary>
+                  <p>USE quando: jogo abre no monitor errado; jogo não aceita resolução ultrawide; cursor escapa pro segundo monitor. O gamescope cria um ambiente de display isolado. Com ele ativo, SDL_VIDEODRIVER e SDL_VIDEO_FULLSCREEN_DISPLAYS ficam desnecessários — use --prefer-output e -W/-H dentro do painel abaixo.</p>
+                </details>
+              </div>
+            </div>
+            <div id="gamescope-panel" class="gamescope-panel" <%= gamescopeEnabled ? '' : 'style="display:none"' %>>
+              <div class="gs-hint">Opções inseridas entre <code>gamescope</code> e <code>--</code></div>
+              <div class="gs-presets">
+                <span style="color:var(--muted);font-size:11px;margin-right:6px">Preset:</span>
+                <button type="button" onclick="gsPreset(3440,1440,100)">3440×1440@100Hz</button>
+                <button type="button" onclick="gsPreset(2560,1600,60)">2560×1600@60Hz</button>
+                <button type="button" onclick="gsPreset(1920,1080,144)">1920×1080@144Hz</button>
+              </div>
+              <% gamescopeOptions.forEach(function(opt) { %>
+              <div class="gs-row">
+                <input type="checkbox" id="gs_cb_<%= opt.key %>" class="gs-opt-cb"
+                  data-key="<%= opt.key %>" data-flag="<%= opt.flag %>" data-type="<%= opt.type %>"
+                  <%= (gamescopeValues[opt.flag] !== undefined) ? 'checked' : '' %> />
+                <label for="gs_cb_<%= opt.key %>" class="gs-label">
+                  <code><%= opt.flag %></code>
+                  <span style="color:var(--muted);font-size:12px;margin-left:4px"><%= opt.label.replace(/^-\S+\s+/, '') %></span>
+                </label>
+                <% if (opt.type !== 'toggle') { %>
+                  <% if (opt.type === 'select' && opt.options) { %>
+                  <select id="gs_val_<%= opt.key %>" class="gs-val-input">
+                    <% opt.options.forEach(function(o) { %>
+                    <option value="<%= o.value %>"
+                      <%= ((gamescopeValues[opt.flag] || opt.defaultValue) === o.value) ? 'selected' : '' %>><%= o.label %></option>
+                    <% }); %>
+                  </select>
+                  <% } else { %>
+                  <input type="text" id="gs_val_<%= opt.key %>" class="gs-val-input"
+                    value="<%= gamescopeValues[opt.flag] !== undefined ? gamescopeValues[opt.flag] : (opt.defaultValue || '') %>"
+                    placeholder="<%= opt.defaultValue || '' %>" />
+                  <% } %>
+                <% } %>
+                <span class="desc gs-desc"><%= opt.description %></span>
+              </div>
+              <% }); %>
+            </div>
+          </section>
+
+          <!-- Env vars grouped by category -->
+          <%
+            const categories = [...new Set(envOptions.map(function(e) { return e.category; }))];
+            categories.forEach(function(cat) {
+              const opts = envOptions.filter(function(e) { return e.category === cat; });
+          %>
+          <section class="opt-cat">
+            <div class="opt-cat-title"><%= cat %></div>
+            <% opts.forEach(function(opt) { %>
+            <div class="opt-row">
+              <input type="checkbox" id="env_<%= opt.key %>" class="env-cb" data-key="<%= opt.key %>"
+                <%= (currentEnv[opt.key] !== undefined) ? 'checked' : '' %> />
+              <div class="opt-meta">
+                <label for="env_<%= opt.key %>"><strong><%= opt.label %></strong> <code class="flag-code"><%= opt.key %></code></label>
+                <span class="desc"><%= opt.description %></span>
+                <% if (opt.tip) { %>
+                <details class="opt-tip">
+                  <summary>quando usar?</summary>
+                  <p><%= opt.tip %></p>
+                </details>
+                <% } %>
+              </div>
+              <div class="opt-value">
+                <% if (opt.type === 'toggle') { %>
+                <select class="env-val" data-key="<%= opt.key %>">
+                  <option value="1" <%= ((currentEnv[opt.key] || opt.defaultValue) === '1') ? 'selected' : '' %>>1 (on)</option>
+                  <option value="0" <%= ((currentEnv[opt.key] || opt.defaultValue) === '0') ? 'selected' : '' %>>0 (off)</option>
+                </select>
+                <% } else if (opt.type === 'select' && opt.options) { %>
+                <select class="env-val" data-key="<%= opt.key %>">
+                  <% opt.options.forEach(function(o) { %>
+                  <option value="<%= o.value %>"
+                    <%= ((currentEnv[opt.key] || opt.defaultValue) === o.value) ? 'selected' : '' %>><%= o.label %></option>
+                  <% }); %>
+                </select>
+                <% } else { %>
+                <input type="text" class="env-val" data-key="<%= opt.key %>"
+                  value="<%= currentEnv[opt.key] !== undefined ? currentEnv[opt.key] : opt.defaultValue %>"
+                  placeholder="<%= opt.defaultValue %>" />
+                <% } %>
+              </div>
+            </div>
+            <% }); %>
+          </section>
+          <% }); %>
+
+          <!-- Args -->
+          <section class="opt-cat">
+            <div class="opt-cat-title">Args — passados após %command%</div>
+            <%
+              const argCats = [...new Set(argOptions.map(function(a) { return a.category; }))];
+              argCats.forEach(function(cat) {
+                const catArgs = argOptions.filter(function(a) { return a.category === cat; });
+            %>
+            <div style="padding:6px 10px 2px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em"><%= cat %></div>
+            <% catArgs.forEach(function(arg) { %>
+            <div class="opt-row">
+              <input type="checkbox" id="arg_<%= arg.key %>" class="arg-cb" data-value="<%= arg.value %>"
+                <%= currentArgs.includes(arg.value) ? 'checked' : '' %> />
+              <div class="opt-meta">
+                <label for="arg_<%= arg.key %>"><code><%= arg.label %></code> <span class="desc" style="display:inline"><%= arg.description %></span></label>
+                <% if (arg.tip) { %>
+                <details class="opt-tip">
+                  <summary>quando usar?</summary>
+                  <p><%= arg.tip %></p>
+                </details>
+                <% } %>
+              </div>
+            </div>
+            <% }); %>
+            <% }); %>
+          </section>
+
+          <!-- Forçar Resolução -->
+          <section class="opt-cat">
+            <div class="opt-cat-title">Forçar Resolução — args pós %command%</div>
+            <div class="res-note">
+              Para jogos que não detectam o monitor: RE Engine (Resident Evil, DMC5, Monster Hunter World), alguns UE4.
+              Marque o <strong>formato</strong> que o jogo aceita e defina a resolução abaixo.
+              <details class="opt-tip" style="margin-top:4px">
+                <summary>como descobrir o formato correto?</summary>
+                <p>Tente -width/-height primeiro (RE Engine, maioria UE4/UE5). Se não funcionar, -screen-width/-screen-height (Unity). Para Source Engine use gamescope com -w/-h em vez disto. Consulte a wiki do jogo no PCGamingWiki — geralmente lista os args aceitos.</p>
+              </details>
+            </div>
+            <div class="res-shared">
+              <label for="shared-res-w">Largura</label>
+              <input type="text" id="shared-res-w" class="res-input" value="<%= currentResWidth %>" placeholder="3440" />
+              <span style="color:var(--muted)">×</span>
+              <label for="shared-res-h">Altura</label>
+              <input type="text" id="shared-res-h" class="res-input" value="<%= currentResHeight %>" placeholder="1440" />
+              <div class="res-presets-inline">
+                <button type="button" onclick="setRes(3440,1440)">3440×1440</button>
+                <button type="button" onclick="setRes(2560,1600)">2560×1600</button>
+                <button type="button" onclick="setRes(1920,1080)">1920×1080</button>
+              </div>
+            </div>
+            <% resolutionFormats.forEach(function(fmt) { %>
+            <div class="opt-row">
+              <input type="checkbox" id="res_<%= fmt.key %>" class="res-fmt-cb"
+                data-wflag="<%= fmt.widthFlag %>" data-hflag="<%= fmt.heightFlag %>"
+                data-fmtkey="<%= fmt.key %>"
+                <%= currentResFormats.includes(fmt.key) ? 'checked' : '' %> />
+              <div class="opt-meta">
+                <label for="res_<%= fmt.key %>"><code><%= fmt.widthFlag %> {w} <%= fmt.heightFlag %> {h}</code> <span style="color:var(--muted);font-size:11px"><%= fmt.label %></span></label>
+                <span class="desc"><%= fmt.description %></span>
+              </div>
+            </div>
+            <% }); %>
+          </section>
+
+        </div><!-- /options-col -->
+
+        <!-- ========== RIGHT: Preview + Diagnóstico ========== -->
+        <div class="preview-col">
+          <div class="preview-box">
+            <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Preview ao vivo</div>
+            <pre id="preview-text" style="margin:0;white-space:pre-wrap;word-break:break-all;min-height:60px;color:var(--text);font-size:12px"></pre>
+          </div>
+          <div class="preview-actions">
+            <button type="button" id="btn-copy" class="btn-preview">Copiar</button>
+            <button type="submit" class="btn-preview btn-save">Salvar override</button>
+          </div>
+
+          <!-- Diagnóstico -->
+          <div class="diag-panel">
+            <div class="diag-title">Diagnóstico</div>
+            <div id="diag-body">
+              <div class="diag-ok" id="diag-ok">&#10003; Sem conflitos detectados</div>
+            </div>
+          </div>
+
+          <!-- IA -->
+          <div class="ai-panel">
+            <div class="ai-title">IA</div>
+
+            <div class="ai-problem-box">
+              <label for="ai-problem-text" class="ai-problem-label">Descreva um problema (opcional)</label>
+              <textarea id="ai-problem-text" rows="3"
+                placeholder="ex: trava ao carregar save · cursor escapa pro monitor 2 · FPS cai no chuveiro do RE7"></textarea>
+              <button type="button" class="btn-ai btn-ai-troubleshoot" id="btn-ai-troubleshoot">Resolver problema com IA</button>
+            </div>
+
+            <div class="ai-actions">
+              <button type="button" class="btn-ai btn-ai-secondary" id="btn-ai-diagnose">Diagnosticar config atual</button>
+              <button type="button" class="btn-ai btn-ai-secondary" id="btn-ai-suggest">Sugerir build do zero</button>
+            </div>
+            <div class="ai-log-status" id="ai-log-status">
+              <span class="ai-log-badge ai-log-checking">verificando log do Proton…</span>
+            </div>
+            <details class="ai-log-toggle">
+              <summary>Anexar log manualmente (sobrescreve auto)</summary>
+              <textarea id="ai-proton-log" rows="6" placeholder="Cole trecho de ~/steam-&lt;appid&gt;.log se preferir não usar o auto"></textarea>
+            </details>
+            <p class="ai-hint"><a href="/settings/ai">Configurar provider / modelo →</a></p>
+          </div>
+
+          <p style="color:var(--muted);font-size:11px;margin-top:8px">Salvar sobrescreve o campo "Launch options pessoal" na página do jogo.</p>
+        </div>
+
+      </div><!-- /builder-layout -->
+    </form>
+
+  <!-- Dados inline para JS -->
+  <script>
+    var COMPAT_RULES = <%- JSON.stringify(compatRules) %>;
+    var ENGINE_PRESETS = <%- JSON.stringify(enginePresetsAll) %>;
+  </script>
+
+  <script>
+    // ─── Estado atual ────────────────────────────────────────
+    function getCurrentState() {
+      var env = {};
+      document.querySelectorAll('.env-cb:checked').forEach(function(cb) {
+        var valEl = document.querySelector('.env-val[data-key="' + cb.dataset.key + '"]');
+        env[cb.dataset.key] = valEl ? valEl.value : '1';
+      });
+
+      var args = [];
+      document.querySelectorAll('.arg-cb:checked').forEach(function(cb) { args.push(cb.dataset.value); });
+
+      var wrappers = [];
+      document.querySelectorAll('.wrap-cb:checked').forEach(function(cb) {
+        if (!cb.dataset.isGamescope) wrappers.push(cb.dataset.prefix ? cb.dataset.prefix.split(' ')[0] : '');
+      });
+      var gsCb = document.getElementById('wrap_gamescope');
+      if (gsCb && gsCb.checked) wrappers.push('gamescope');
+
+      var gs = {};
+      document.querySelectorAll('.gs-opt-cb:checked').forEach(function(cb) {
+        var valEl = document.getElementById('gs_val_' + cb.dataset.key);
+        gs[cb.dataset.flag] = valEl ? valEl.value : '1';
+      });
+
+      var resFmts = [];
+      document.querySelectorAll('.res-fmt-cb:checked').forEach(function(cb) {
+        resFmts.push(cb.dataset.fmtkey);
+      });
+
+      return { env: env, args: args, wrappers: wrappers, gs: gs, resFmts: resFmts };
+    }
+
+    // ─── Avaliador de condição ───────────────────────────────
+    function evalCond(cond, state) {
+      var colonIdx = cond.indexOf(':');
+      var type = cond.slice(0, colonIdx);
+      var rest = cond.slice(colonIdx + 1);
+
+      if (type === 'env') {
+        var eqIdx = rest.indexOf('=');
+        if (eqIdx >= 0) {
+          var k = rest.slice(0, eqIdx);
+          var v = rest.slice(eqIdx + 1);
+          return state.env[k] !== undefined && state.env[k] === v;
+        }
+        return state.env[rest] !== undefined;
+      }
+      if (type === 'env_off')  return state.env[rest] === undefined;
+      if (type === 'arg')      return state.args.indexOf(rest) >= 0;
+      if (type === 'arg_off')  return state.args.indexOf(rest) < 0;
+      if (type === 'wrap')     return state.wrappers.indexOf(rest) >= 0;
+      if (type === 'gs')       return state.gs[rest] !== undefined;
+      if (type === 'gs_off')   return state.gs[rest] === undefined;
+      if (type === 'res')      return state.resFmts.indexOf(rest) >= 0;
+      return false;
+    }
+
+    // ─── Verificar todas as regras ──────────────────────────
+    function checkRules() {
+      var state = getCurrentState();
+      var triggered = [];
+
+      COMPAT_RULES.forEach(function(rule) {
+        var allMatch = rule.when.every(function(cond) { return evalCond(cond, state); });
+        if (allMatch) triggered.push(rule);
+      });
+
+      renderDiagnostics(triggered);
+    }
+
+    function renderDiagnostics(rules) {
+      var body = document.getElementById('diag-body');
+      var ok   = document.getElementById('diag-ok');
+
+      body.querySelectorAll('.diag-card').forEach(function(el) { el.remove(); });
+
+      if (rules.length === 0) {
+        ok.style.display = '';
+        return;
+      }
+
+      ok.style.display = 'none';
+
+      rules.forEach(function(rule) {
+        var card = document.createElement('div');
+        card.className = 'diag-card diag-' + rule.severity;
+        card.dataset.ruleId = rule.id;
+
+        var icon = rule.severity === 'error' ? '✕' : rule.severity === 'warning' ? '⚠' : 'ℹ';
+        var html = '<div class="diag-card-head"><span class="diag-icon">' + icon + '</span><span class="diag-msg">' + rule.message + '</span></div>';
+        html += '<div class="diag-detail">' + rule.detail + '</div>';
+
+        var hasFix = (rule.fixDisable && rule.fixDisable.length) || (rule.fixEnable && rule.fixEnable.length);
+        if (hasFix) {
+          var label = (rule.fixDisable && rule.fixDisable.length) ? 'Corrigir' : 'Aplicar sugestão';
+          html += '<div class="diag-actions"><button type="button" class="diag-fix">' + label + '</button></div>';
+        }
+
+        card.innerHTML = html;
+
+        if (hasFix) {
+          card.querySelector('.diag-fix').addEventListener('click', function() {
+            applyFix(rule.fixDisable || [], rule.fixEnable || []);
+          });
+        }
+
+        body.appendChild(card);
+      });
+    }
+
+    // ─── Quick fix ──────────────────────────────────────────
+    function applyFix(fixDisable, fixEnable) {
+      (fixDisable || []).forEach(function(cond) { disableFlag(cond); });
+      (fixEnable  || []).forEach(function(item) { enableFlag(item.flag, item.value); });
+      updatePreview();
+      checkRules();
+    }
+
+    function disableFlag(cond) {
+      var colonIdx = cond.indexOf(':');
+      var type = cond.slice(0, colonIdx);
+      var rest = cond.slice(colonIdx + 1);
+      if (type === 'env') {
+        var cb = document.getElementById('env_' + rest);
+        if (cb) cb.checked = false;
+      } else if (type === 'arg') {
+        document.querySelectorAll('.arg-cb').forEach(function(cb) { if (cb.dataset.value === rest) cb.checked = false; });
+      } else if (type === 'wrap') {
+        if (rest === 'gamescope') {
+          var gs = document.getElementById('wrap_gamescope');
+          if (gs) { gs.checked = false; document.getElementById('gamescope-panel').style.display = 'none'; }
+        } else {
+          document.querySelectorAll('.wrap-cb').forEach(function(cb) { if (cb.dataset.prefix === rest) cb.checked = false; });
+        }
+      } else if (type === 'gs') {
+        document.querySelectorAll('.gs-opt-cb').forEach(function(cb) { if (cb.dataset.flag === rest) cb.checked = false; });
+      } else if (type === 'res') {
+        document.querySelectorAll('.res-fmt-cb').forEach(function(cb) { if (cb.dataset.fmtkey === rest) cb.checked = false; });
+      }
+    }
+
+    function enableFlag(flag, value) {
+      var colonIdx = flag.indexOf(':');
+      var type = flag.slice(0, colonIdx);
+      var rest = flag.slice(colonIdx + 1);
+      if (type === 'env') {
+        var cb = document.getElementById('env_' + rest);
+        if (cb) cb.checked = true;
+        if (value !== undefined) {
+          var valEl = document.querySelector('.env-val[data-key="' + rest + '"]');
+          if (valEl) valEl.value = value;
+        }
+      } else if (type === 'arg') {
+        document.querySelectorAll('.arg-cb').forEach(function(cb) { if (cb.dataset.value === rest) cb.checked = true; });
+      } else if (type === 'gs') {
+        document.querySelectorAll('.gs-opt-cb').forEach(function(cb) {
+          if (cb.dataset.flag === rest) {
+            cb.checked = true;
+            if (value !== undefined) {
+              var valEl = document.getElementById('gs_val_' + cb.dataset.key);
+              if (valEl) valEl.value = value;
+            }
+          }
+        });
+        // Ensure gamescope panel is visible
+        var gsCb = document.getElementById('wrap_gamescope');
+        if (gsCb) { gsCb.checked = true; document.getElementById('gamescope-panel').style.display = ''; }
+      }
+    }
+
+    // ─── Engine presets ─────────────────────────────────────
+    function applyEnginePreset(presetKey) {
+      var preset = ENGINE_PRESETS[presetKey];
+      if (!preset) return;
+
+      // Enable env vars
+      (preset.envEnable || []).forEach(function(item) {
+        var cb = document.getElementById('env_' + item.key);
+        if (cb) {
+          cb.checked = true;
+          var valEl = document.querySelector('.env-val[data-key="' + item.key + '"]');
+          if (valEl) valEl.value = item.val;
+        }
+      });
+
+      // Enable args
+      (preset.argsEnable || []).forEach(function(val) {
+        document.querySelectorAll('.arg-cb').forEach(function(cb) { if (cb.dataset.value === val) cb.checked = true; });
+      });
+
+      updatePreview();
+      checkRules();
+
+      // Show preset note
+      var noteEl = document.getElementById('preset-applied-note');
+      if (!noteEl) {
+        noteEl = document.createElement('p');
+        noteEl.id = 'preset-applied-note';
+        noteEl.className = 'engine-note engine-note-applied';
+        document.querySelector('.engine-bar').insertAdjacentElement('afterend', noteEl);
+      }
+      noteEl.textContent = '✓ Preset aplicado: ' + preset.note;
+    }
+
+    var btnEnginePreset = document.getElementById('btn-engine-preset');
+    if (btnEnginePreset) {
+      var presetKey = '<%= game.engine || "" %>';
+      btnEnginePreset.addEventListener('click', function() { applyEnginePreset(presetKey); });
+    }
+
+    document.getElementById('btn-manual-preset').addEventListener('click', function() {
+      var sel = document.getElementById('manual-preset-select');
+      if (sel.value) applyEnginePreset(sel.value);
+    });
+
+    // ─── Build launch string ─────────────────────────────────
+    function buildLaunchString() {
+      var wrappers = [];
+      document.querySelectorAll('.wrap-cb:checked').forEach(function(cb) {
+        if (!cb.dataset.isGamescope) wrappers.push(cb.dataset.prefix);
+      });
+
+      var gamescopeStr = '';
+      var gsCb = document.getElementById('wrap_gamescope');
+      if (gsCb && gsCb.checked) {
+        var gsParts = ['gamescope'];
+        document.querySelectorAll('.gs-opt-cb:checked').forEach(function(cb) {
+          if (cb.dataset.type === 'toggle') {
+            gsParts.push(cb.dataset.flag);
+          } else {
+            var valEl = document.getElementById('gs_val_' + cb.dataset.key);
+            var val = valEl ? valEl.value.trim() : '';
+            if (val) gsParts.push(cb.dataset.flag + ' ' + val);
+          }
+        });
+        gsParts.push('--');
+        gamescopeStr = gsParts.join(' ');
+      }
+
+      var envParts = [];
+      document.querySelectorAll('.env-cb:checked').forEach(function(cb) {
+        var key = cb.dataset.key;
+        var valEl = document.querySelector('.env-val[data-key="' + key + '"]');
+        var val = valEl ? valEl.value.trim() : '';
+        if (key && val) envParts.push(key + '=' + val);
+      });
+
+      var args = [];
+      document.querySelectorAll('.arg-cb:checked').forEach(function(cb) { args.push(cb.dataset.value); });
+
+      var resW = (document.getElementById('shared-res-w') || {}).value || '';
+      var resH = (document.getElementById('shared-res-h') || {}).value || '';
+      resW = resW.trim(); resH = resH.trim();
+      document.querySelectorAll('.res-fmt-cb:checked').forEach(function(cb) {
+        if (resW && resH) args.push(cb.dataset.wflag + ' ' + resW + ' ' + cb.dataset.hflag + ' ' + resH);
+      });
+
+      // Ordem: ENV [wrappers fora] gamescope -- [wrappers dentro] %command% args
+      // Quando gamescope ativo, outros wrappers ficam DENTRO (após --) pra o HUD/governor agir
+      // dentro do display nested. Sem gamescope, wrappers ficam antes do %command% normalmente.
+      var parts = [];
+      if (envParts.length) parts.push(envParts.join(' '));
+      if (gamescopeStr) {
+        parts.push(gamescopeStr);
+        if (wrappers.length) parts.push(wrappers.join(' '));
+      } else if (wrappers.length) {
+        parts.push(wrappers.join(' '));
+      }
+      parts.push('%command%');
+      if (args.length) parts.push(args.join(' '));
+      return parts.join(' ');
+    }
+
+    function updatePreview() {
+      var str = buildLaunchString();
+      document.getElementById('preview-text').textContent = str;
+      document.getElementById('hidden-launch').value = str;
+    }
+
+    // ─── Gamescope toggle ────────────────────────────────────
+    var gsCbEl = document.getElementById('wrap_gamescope');
+    if (gsCbEl) {
+      gsCbEl.addEventListener('change', function() {
+        document.getElementById('gamescope-panel').style.display = this.checked ? '' : 'none';
+        updatePreview(); checkRules();
+      });
+    }
+
+    // ─── Preset helpers ──────────────────────────────────────
+    function gsPreset(w, h, r) {
+      var fields = { '-w': w, '-h': h, '-W': w, '-H': h, '-r': r };
+      document.querySelectorAll('.gs-opt-cb').forEach(function(cb) {
+        if (fields[cb.dataset.flag] !== undefined) {
+          cb.checked = true;
+          var valEl = document.getElementById('gs_val_' + cb.dataset.key);
+          if (valEl) valEl.value = fields[cb.dataset.flag];
+        }
+      });
+      updatePreview(); checkRules();
+    }
+
+    function setRes(w, h) {
+      var wEl = document.getElementById('shared-res-w');
+      var hEl = document.getElementById('shared-res-h');
+      if (wEl) wEl.value = w;
+      if (hEl) hEl.value = h;
+      updatePreview(); checkRules();
+    }
+
+    // ─── Copiar ──────────────────────────────────────────────
+    document.getElementById('btn-copy').addEventListener('click', function() {
+      navigator.clipboard.writeText(buildLaunchString()).then(function() {
+        var btn = document.getElementById('btn-copy');
+        var orig = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(function() { btn.textContent = orig; }, 1200);
+      });
+    });
+
+    // ─── Listeners ───────────────────────────────────────────
+    function attachAll() {
+      document.querySelectorAll('.wrap-cb, .env-cb, .arg-cb, .env-val, .gs-opt-cb, .gs-val-input, .res-fmt-cb, #shared-res-w, #shared-res-h').forEach(function(el) {
+        el.addEventListener('change', function() { updatePreview(); checkRules(); });
+        el.addEventListener('input',  function() { updatePreview(); checkRules(); });
+      });
+    }
+    attachAll();
+
+    // ─── Init ────────────────────────────────────────────────
+    updatePreview();
+    checkRules();
+
+    // ─── IA: status do log do Proton ─────────────────────────
+    function fmtRelativeTime(iso) {
+      var diff = Date.now() - new Date(iso).getTime();
+      var min = Math.floor(diff / 60000);
+      if (min < 1)  return 'agora';
+      if (min < 60) return min + 'min atrás';
+      var h = Math.floor(min / 60);
+      if (h < 24) return h + 'h atrás';
+      var d = Math.floor(h / 24);
+      return d + 'd atrás';
+    }
+    function fmtBytes(n) {
+      if (n < 1024) return n + 'B';
+      if (n < 1048576) return (n / 1024).toFixed(1) + 'KB';
+      return (n / 1048576).toFixed(1) + 'MB';
+    }
+    function refreshLogStatus() {
+      var el = document.getElementById('ai-log-status');
+      el.innerHTML = '<span class="ai-log-badge ai-log-checking">verificando log do Proton…</span>';
+      fetch('/api/game/<%= game.appid %>/proton-log')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.found) {
+            el.innerHTML = '<span class="ai-log-badge ai-log-found">&#10003; log auto: ' +
+              fmtRelativeTime(d.mtime) + ' · ' + fmtBytes(d.size) + ' (' + d.lines + ' linhas)' +
+              (d.truncated ? ' · trecho filtrado' : '') + '</span>' +
+              ' <button type="button" class="ai-log-refresh" onclick="refreshLogStatus()" title="Recarregar status">↻</button>';
+          } else {
+            var hint = d.reason === 'empty' ? 'log vazio' : 'sem log';
+            el.innerHTML = '<span class="ai-log-badge ai-log-missing">' + hint +
+              ' · ative <code>PROTON_LOG=1</code> e rode o jogo</span>' +
+              ' <button type="button" class="ai-log-refresh" onclick="refreshLogStatus()" title="Recarregar">↻</button>';
+          }
+        })
+        .catch(function() {
+          el.innerHTML = '<span class="ai-log-badge ai-log-missing">status indisponível</span>';
+        });
+    }
+    refreshLogStatus();
+
+    // ─── IA: diagnose & suggest ──────────────────────────────
+    var aiModal = null;
+
+    function openAIModal() {
+      if (aiModal) return aiModal;
+      aiModal = document.createElement('div');
+      aiModal.className = 'ai-modal-backdrop';
+      aiModal.innerHTML = '<div class="ai-modal">' +
+        '<div class="ai-modal-head"><span id="ai-modal-title">IA</span><button type="button" class="ai-modal-close" aria-label="fechar">&times;</button></div>' +
+        '<div id="ai-modal-body" class="ai-modal-body"></div>' +
+        '<div id="ai-modal-actions" class="ai-modal-actions"></div>' +
+        '</div>';
+      document.body.appendChild(aiModal);
+      aiModal.querySelector('.ai-modal-close').addEventListener('click', closeAIModal);
+      aiModal.addEventListener('click', function(e) { if (e.target === aiModal) closeAIModal(); });
+      return aiModal;
+    }
+    function closeAIModal() {
+      if (aiModal) { aiModal.remove(); aiModal = null; }
+    }
+    function setAIModal(title, bodyHTML, actionsHTML) {
+      openAIModal();
+      document.getElementById('ai-modal-title').textContent = title;
+      document.getElementById('ai-modal-body').innerHTML = bodyHTML;
+      document.getElementById('ai-modal-actions').innerHTML = actionsHTML || '';
+    }
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c];
+      });
+    }
+
+    function severityClass(s) {
+      return s === 'error' ? 'diag-error' : s === 'warning' ? 'diag-warning' : 'diag-info';
+    }
+
+    function applyAIRecommendation(rec, remove) {
+      // remove primeiro
+      if (remove && Array.isArray(remove.env)) {
+        remove.env.forEach(function(k) { disableFlag('env:' + k); });
+      }
+      if (remove && Array.isArray(remove.args)) {
+        remove.args.forEach(function(v) { disableFlag('arg:' + v); });
+      }
+      // depois aplica
+      if (rec && rec.env && typeof rec.env === 'object') {
+        Object.keys(rec.env).forEach(function(k) { enableFlag('env:' + k, String(rec.env[k])); });
+      }
+      if (rec && Array.isArray(rec.args)) {
+        rec.args.forEach(function(v) { enableFlag('arg:' + v); });
+      }
+      if (rec && Array.isArray(rec.wrappers)) {
+        rec.wrappers.forEach(function(w) {
+          if (w === 'gamescope') {
+            var gs = document.getElementById('wrap_gamescope');
+            if (gs) { gs.checked = true; document.getElementById('gamescope-panel').style.display = ''; }
+          } else {
+            document.querySelectorAll('.wrap-cb').forEach(function(cb) {
+              if (cb.dataset.prefix === w) cb.checked = true;
+            });
+          }
+        });
+      }
+      if (rec && rec.gamescope && typeof rec.gamescope === 'object') {
+        var gsCb = document.getElementById('wrap_gamescope');
+        if (gsCb) { gsCb.checked = true; document.getElementById('gamescope-panel').style.display = ''; }
+        Object.keys(rec.gamescope).forEach(function(flag) {
+          enableFlag('gs:' + flag, String(rec.gamescope[flag]));
+        });
+      }
+      updatePreview();
+      checkRules();
+    }
+
+    function renderDiagnoseResult(data) {
+      var issues = Array.isArray(data.issues) ? data.issues : [];
+      var rec    = data.recommendation || {};
+      var remove = data.remove || {};
+      var confidence = typeof data.confidence === 'number' ? data.confidence : null;
+      var reasoning  = data.reasoning || '';
+      var cached     = data.cached ? ' <span class="ai-cached-badge">cache</span>' : '';
+      var modelUsed  = data.model_used ? '<span class="ai-model-tag">' + escapeHTML(data.model_used) + '</span>' : '';
+      var logDetail = '';
+      if (data.log_bytes) logDetail = ' (' + (data.log_bytes < 1024 ? data.log_bytes + 'B' : (data.log_bytes/1024).toFixed(1) + 'KB') + ', ' + data.log_lines + ' linhas)';
+      var logSrc     = data.log_source === 'auto' ? ' <span class="ai-log-src">log: auto' + logDetail + '</span>' :
+                       data.log_source === 'manual' ? ' <span class="ai-log-src">log: manual' + logDetail + '</span>' :
+                       ' <span class="ai-log-src ai-log-src-none">log: ausente</span>';
+
+      var html = '';
+      html += '<div class="ai-meta">' + modelUsed + cached + logSrc;
+      if (confidence !== null) html += ' <span class="ai-confidence">confiança ' + Math.round(confidence * 100) + '%</span>';
+      html += '</div>';
+
+      if (issues.length) {
+        html += '<div class="ai-section-title">Problemas encontrados</div>';
+        issues.forEach(function(i) {
+          html += '<div class="diag-card ' + severityClass(i.severity) + '">' +
+            '<div class="diag-msg">' + escapeHTML(i.message) + '</div>' +
+            (i.explanation ? '<div class="diag-detail">' + escapeHTML(i.explanation) + '</div>' : '') +
+            '</div>';
+        });
+      } else {
+        html += '<div class="diag-ok" style="padding:8px 0">&#10003; IA não encontrou problemas críticos</div>';
+      }
+
+      if (reasoning) {
+        html += '<div class="ai-section-title">Raciocínio</div><div class="ai-reasoning">' + escapeHTML(reasoning) + '</div>';
+      }
+
+      var actions = '';
+      if (rec && (rec.env || rec.args || rec.wrappers || rec.gamescope || (remove.env && remove.env.length) || (remove.args && remove.args.length))) {
+        actions = '<button type="button" class="btn-ai" id="btn-ai-apply">Aplicar recomendação</button>' +
+                  '<button type="button" class="btn-ai btn-ai-secondary" onclick="(function(){ if (window.__closeAIModal) window.__closeAIModal(); })()">Fechar</button>';
+      }
+
+      setAIModal('Diagnóstico IA', html, actions);
+      window.__closeAIModal = closeAIModal;
+      var applyBtn = document.getElementById('btn-ai-apply');
+      if (applyBtn) applyBtn.addEventListener('click', function() {
+        applyAIRecommendation(rec, remove);
+        closeAIModal();
+      });
+    }
+
+    function renderSuggestResult(data) {
+      var rec        = data.recommendation || {};
+      var reasoning  = data.reasoning || '';
+      var considerations = Array.isArray(data.considerations) ? data.considerations : [];
+      var confidence = typeof data.confidence === 'number' ? data.confidence : null;
+      var cached     = data.cached ? ' <span class="ai-cached-badge">cache</span>' : '';
+      var modelUsed  = data.model_used ? '<span class="ai-model-tag">' + escapeHTML(data.model_used) + '</span>' : '';
+
+      var html = '<div class="ai-meta">' + modelUsed + cached;
+      if (confidence !== null) html += ' <span class="ai-confidence">confiança ' + Math.round(confidence * 100) + '%</span>';
+      html += '</div>';
+
+      // resumo da config sugerida
+      var lines = [];
+      if (rec.env && Object.keys(rec.env).length) {
+        lines.push('<strong>Env:</strong> ' + Object.keys(rec.env).map(function(k){ return escapeHTML(k+'='+rec.env[k]); }).join(', '));
+      }
+      if (rec.args && rec.args.length)         lines.push('<strong>Args:</strong> ' + rec.args.map(escapeHTML).join(' '));
+      if (rec.wrappers && rec.wrappers.length) lines.push('<strong>Wrappers:</strong> ' + rec.wrappers.map(escapeHTML).join(', '));
+      if (rec.gamescope && Object.keys(rec.gamescope).length) {
+        lines.push('<strong>Gamescope:</strong> ' + Object.keys(rec.gamescope).map(function(k){ return escapeHTML(k+' '+rec.gamescope[k]); }).join(', '));
+      }
+      html += '<div class="ai-section-title">Recomendação</div>';
+      html += lines.length ? '<div class="ai-rec-summary">' + lines.join('<br>') + '</div>' : '<p style="color:var(--muted)">(config mínima/vazia — modelo julga não precisar de tweaks)</p>';
+
+      if (reasoning) {
+        html += '<div class="ai-section-title">Raciocínio</div><div class="ai-reasoning">' + escapeHTML(reasoning) + '</div>';
+      }
+      if (considerations.length) {
+        html += '<div class="ai-section-title">Avisos</div><ul class="ai-considerations">' +
+          considerations.map(function(c){ return '<li>' + escapeHTML(c) + '</li>'; }).join('') + '</ul>';
+      }
+
+      var actions = '<button type="button" class="btn-ai" id="btn-ai-apply">Aplicar recomendação</button>' +
+                    '<button type="button" class="btn-ai btn-ai-secondary" onclick="(function(){ if (window.__closeAIModal) window.__closeAIModal(); })()">Fechar</button>';
+
+      setAIModal('Sugestão IA', html, actions);
+      window.__closeAIModal = closeAIModal;
+      document.getElementById('btn-ai-apply').addEventListener('click', function() {
+        applyAIRecommendation(rec, {});
+        closeAIModal();
+      });
+    }
+
+    function showAILoading(title) {
+      setAIModal(title, '<div class="ai-loading">Consultando modelo… <span class="ai-spinner"></span></div>', '');
+      window.__closeAIModal = closeAIModal;
+    }
+    function showAIError(title, msg) {
+      setAIModal(title, '<div class="ai-error">' + escapeHTML(msg) + '</div>',
+        '<a href="/settings/ai" class="btn-ai btn-ai-secondary">Abrir Settings</a>' +
+        '<button type="button" class="btn-ai btn-ai-secondary" onclick="window.__closeAIModal()">Fechar</button>');
+    }
+
+    document.getElementById('btn-ai-diagnose').addEventListener('click', function() {
+      var protonLog = (document.getElementById('ai-proton-log').value || '').trim();
+      showAILoading('Diagnóstico IA');
+      fetch('/api/game/<%= game.appid %>/diagnose', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ proton_log: protonLog || undefined }),
+      })
+      .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
+      .then(function(res) {
+        if (!res.ok) { showAIError('Diagnóstico IA', res.body.error || 'erro desconhecido'); return; }
+        renderDiagnoseResult(res.body);
+      })
+      .catch(function(e) { showAIError('Diagnóstico IA', e.message); });
+    });
+
+    document.getElementById('btn-ai-suggest').addEventListener('click', function() {
+      showAILoading('Sugestão IA');
+      fetch('/api/game/<%= game.appid %>/suggest', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      })
+      .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
+      .then(function(res) {
+        if (!res.ok) { showAIError('Sugestão IA', res.body.error || 'erro desconhecido'); return; }
+        renderSuggestResult(res.body);
+      })
+      .catch(function(e) { showAIError('Sugestão IA', e.message); });
+    });
+
+    // ─── Troubleshoot (problema descrito) ────────────────────
+    function renderTroubleshootResult(data) {
+      var diagnosis  = data.diagnosis || '';
+      var issues     = Array.isArray(data.issues) ? data.issues : [];
+      var rec        = data.recommendation || {};
+      var remove     = data.remove || {};
+      var reasoning  = data.reasoning || '';
+      var confidence = typeof data.confidence === 'number' ? data.confidence : null;
+      var cached     = data.cached ? ' <span class="ai-cached-badge">cache</span>' : '';
+      var modelUsed  = data.model_used ? '<span class="ai-model-tag">' + escapeHTML(data.model_used) + '</span>' : '';
+      var logDetail  = '';
+      if (data.log_bytes) logDetail = ' (' + (data.log_bytes < 1024 ? data.log_bytes + 'B' : (data.log_bytes/1024).toFixed(1) + 'KB') + ', ' + data.log_lines + ' linhas)';
+      var logSrc     = data.log_source === 'auto' ? ' <span class="ai-log-src">log: auto' + logDetail + '</span>' :
+                       data.log_source === 'manual' ? ' <span class="ai-log-src">log: manual' + logDetail + '</span>' :
+                       ' <span class="ai-log-src ai-log-src-none">log: ausente</span>';
+
+      var html = '<div class="ai-meta">' + modelUsed + cached + logSrc;
+      if (confidence !== null) html += ' <span class="ai-confidence">confiança ' + Math.round(confidence * 100) + '%</span>';
+      html += '</div>';
+
+      if (diagnosis) {
+        html += '<div class="ai-section-title">Diagnóstico</div><div class="ai-reasoning">' + escapeHTML(diagnosis) + '</div>';
+      }
+
+      if (issues.length) {
+        html += '<div class="ai-section-title">Pontos identificados</div>';
+        issues.forEach(function(i) {
+          html += '<div class="diag-card ' + severityClass(i.severity) + '">' +
+            '<div class="diag-msg">' + escapeHTML(i.message) + '</div>' +
+            (i.explanation ? '<div class="diag-detail">' + escapeHTML(i.explanation) + '</div>' : '') +
+            '</div>';
+        });
+      }
+
+      if (reasoning) {
+        html += '<div class="ai-section-title">Raciocínio das mudanças</div><div class="ai-reasoning">' + escapeHTML(reasoning) + '</div>';
+      }
+
+      var hasFix = (rec && (rec.env || rec.args || rec.wrappers || rec.gamescope)) ||
+                   (remove && ((remove.env && remove.env.length) || (remove.args && remove.args.length)));
+      var actions = '';
+      if (hasFix) {
+        actions = '<button type="button" class="btn-ai" id="btn-ai-apply">Aplicar correções</button>' +
+                  '<button type="button" class="btn-ai btn-ai-secondary" onclick="window.__closeAIModal()">Fechar</button>';
+      } else {
+        actions = '<button type="button" class="btn-ai btn-ai-secondary" onclick="window.__closeAIModal()">Fechar</button>';
+      }
+
+      setAIModal('Resolver problema · IA', html, actions);
+      window.__closeAIModal = closeAIModal;
+      var applyBtn = document.getElementById('btn-ai-apply');
+      if (applyBtn) applyBtn.addEventListener('click', function() {
+        applyAIRecommendation(rec, remove);
+        closeAIModal();
+      });
+    }
+
+    document.getElementById('btn-ai-troubleshoot').addEventListener('click', function() {
+      var problem = (document.getElementById('ai-problem-text').value || '').trim();
+      if (problem.length < 5) {
+        showAIError('Resolver problema · IA', 'Descreva o problema com pelo menos 5 caracteres.');
+        return;
+      }
+      var protonLog = (document.getElementById('ai-proton-log').value || '').trim();
+      var state = getCurrentState();
+      var resW = (document.getElementById('shared-res-w') || {}).value || '';
+      var resH = (document.getElementById('shared-res-h') || {}).value || '';
+      var payload = {
+        problem: problem,
+        proton_log: protonLog || undefined,
+        current_state: {
+          env: state.env,
+          args: state.args,
+          wrappers: state.wrappers,
+          gamescope: state.gs,
+          resW: resW,
+          resH: resH,
+          resFormats: state.resFmts,
+        },
+      };
+
+      showAILoading('Resolver problema · IA');
+      fetch('/api/game/<%= game.appid %>/troubleshoot', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
+      .then(function(res) {
+        if (!res.ok) { showAIError('Resolver problema · IA', res.body.error || 'erro desconhecido'); return; }
+        renderTroubleshootResult(res.body);
+      })
+      .catch(function(e) { showAIError('Resolver problema · IA', e.message); });
+    });
+  </script>
+
+<%- include('partials/shell-bot.ejs') %>

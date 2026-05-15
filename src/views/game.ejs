@@ -1,0 +1,166 @@
+<%- include('partials/shell-top.ejs', { title: game.name, active: 'library' }) %>
+
+<a class="back" href="/">&larr; voltar</a>
+<div class="page-header">
+  <h1><%= game.name %></h1>
+  <span class="page-sub">
+    <code>appid <%= game.appid %></code> ·
+    <span class="badge tier-<%= game.tier %>"><%= game.tier %></span>
+    <% if (game.trending_tier && game.trending_tier !== game.tier) { %>
+      <span class="badge trend">trend: <%= game.trending_tier %></span>
+    <% } %>
+    · <%= game.reports %> reports
+    · <%= Math.round((game.playtime_minutes || 0) / 6) / 10 %>h jogadas
+    · <%= game.installed ? 'instalado' : 'na nuvem' %>
+  </span>
+</div>
+
+<div class="game-actions">
+  <a href="/game/<%= game.appid %>/config">Configurações</a>
+</div>
+
+<h2>Launch options recomendadas</h2>
+<p class="meta">
+  <span class="badge config-<%= game.config_source || 'generic' %>"><%= game.config_source || 'generic' %></span>
+  · engine: <code><%= game.engine || 'unknown' %></code>
+  · Proton: <code><%= game.proton || 'proton-experimental' %></code>
+</p>
+
+<% if (monitors && monitors.length > 0) { %>
+<div class="monitor-picker">
+  <label>Monitor pra fullscreen:
+    <select id="monitor-select">
+      <% monitors.forEach(function(m) { %>
+        <option value="<%= m.name %>" <%= currentMonitor === m.name ? 'selected' : '' %>>
+          <%= m.name %> · <%= m.width %>x<%= m.height %>@<%= m.refresh %>Hz<%= m.priority === 1 ? ' (primário)' : '' %><%= m.hdr ? ' HDR' : '' %>
+        </option>
+      <% }); %>
+      <option value="" <%= currentMonitor === null ? 'selected' : '' %>>(sem SDL_VIDEO_FULLSCREEN_DISPLAYS)</option>
+    </select>
+  </label>
+  <span class="hint">altera o valor de <code>SDL_VIDEO_FULLSCREEN_DISPLAYS</code> no preview sem salvar override</span>
+</div>
+<% } %>
+
+<pre class="copy" data-copy="<%= (game.launch_options || '').replace(/"/g,'&quot;') %>"><%= game.launch_options || '' %></pre>
+
+<% if (notes && notes.length) { %>
+<h3>Notas</h3>
+<ul><% notes.forEach(function(n) { %><li><%= n %></li><% }); %></ul>
+<% } %>
+
+<h2>Seu override</h2>
+<form method="post" action="/game/<%= game.appid %>">
+  <label>Launch options pessoal (sobrescreve a recomendada):
+    <textarea name="user_launch_options" rows="3" placeholder="cole aqui a versão customizada, ex: PROTON_ENABLE_NVAPI=1 ... %command% -dx12"><%= game.user_launch_options || '' %></textarea>
+  </label>
+  <label>Notas pessoais:
+    <textarea name="user_notes" rows="4" placeholder="o que você aprendeu sobre rodar esse jogo"><%= game.user_notes || '' %></textarea>
+  </label>
+  <div class="actions">
+    <button type="submit" name="action" value="save">salvar</button>
+    <% if (game.user_launch_options) { %>
+      <button type="submit" name="action" value="clear_launch" class="danger">limpar launch override</button>
+    <% } %>
+    <% if (game.user_notes) { %>
+      <button type="submit" name="action" value="clear_notes" class="danger">limpar notas</button>
+    <% } %>
+  </div>
+</form>
+
+<% if (game.user_launch_options) { %>
+<% const effectiveLaunch = game.user_launch_options || game.launch_options || '' %>
+<h3>Efetivo (após override)</h3>
+<pre class="copy" data-copy="<%= effectiveLaunch.replace(/"/g,'&quot;') %>"><%= effectiveLaunch %></pre>
+<% } %>
+
+<details class="community-section" id="community-details">
+  <summary>Relatos da comunidade ProtonDB (últimos 10)</summary>
+  <div id="community-body">
+    <p style="color:var(--muted);font-size:13px">Abrindo...</p>
+  </div>
+</details>
+
+<script>
+  const SDL_RX = /SDL_VIDEO_FULLSCREEN_DISPLAYS=\S+\s?/;
+  function applyMonitor(pre, monitor) {
+    if (!pre.dataset.original) pre.dataset.original = pre.dataset.copy || pre.textContent || '';
+    let updated = pre.dataset.original;
+    if (monitor) {
+      if (SDL_RX.test(updated)) {
+        updated = updated.replace(SDL_RX, 'SDL_VIDEO_FULLSCREEN_DISPLAYS=' + monitor + ' ');
+      } else {
+        updated = 'SDL_VIDEO_FULLSCREEN_DISPLAYS=' + monitor + ' ' + updated;
+      }
+    } else {
+      updated = updated.replace(SDL_RX, '');
+    }
+    pre.textContent = updated;
+    pre.dataset.copy = updated;
+  }
+  const sel = document.getElementById('monitor-select');
+  if (sel) {
+    sel.addEventListener('change', () => {
+      document.querySelectorAll('pre.copy').forEach(pre => applyMonitor(pre, sel.value));
+    });
+  }
+  document.querySelectorAll('.copy').forEach(el => el.addEventListener('click', () => {
+    navigator.clipboard.writeText(el.dataset.copy || el.textContent || '').then(() => {
+      if (el.dataset.flashed) return;
+      el.dataset.flashed = '1';
+      el.classList.add('flash');
+      setTimeout(() => { el.classList.remove('flash'); el.dataset.flashed = ''; }, 700);
+    });
+  }));
+
+  const communityDetails = document.getElementById('community-details');
+  const communityBody = document.getElementById('community-body');
+  let communityLoaded = false;
+
+  function ratingColor(rating) {
+    const map = { platinum: '#d6d6d6', gold: '#f5b942', silver: '#c0c0c0', bronze: '#cd7f32', borked: '#ff5a5a' };
+    return map[rating] || '#888';
+  }
+  function relativeTime(ts) {
+    const diff = Date.now() - ts * 1000;
+    const days = Math.floor(diff / 86400000);
+    if (days < 1) return 'hoje';
+    if (days < 30) return days + 'd atrás';
+    const months = Math.floor(days / 30);
+    if (months < 12) return months + 'mo atrás';
+    return Math.floor(months / 12) + 'a atrás';
+  }
+
+  if (communityDetails) {
+    communityDetails.addEventListener('toggle', () => {
+      if (!communityDetails.open || communityLoaded) return;
+      communityLoaded = true;
+      fetch('/api/game/<%= game.appid %>/community')
+        .then(r => r.json())
+        .then(data => {
+          if (!data.reports || data.reports.length === 0) {
+            communityBody.innerHTML = '<p style="color:var(--muted);font-size:13px">Nenhum relato encontrado.</p>';
+            return;
+          }
+          const html = data.reports.map(r => {
+            const notes = r.notes ? r.notes.slice(0, 300) + (r.notes.length > 300 ? '…' : '') : '';
+            return '<div class="report-card">' +
+              '<div class="report-meta">' +
+                '<span class="badge" style="background:' + ratingColor(r.rating) + ';color:#0a0d12">' + r.rating + '</span>' +
+                (r.gpu ? ' · ' + r.gpu : '') +
+                (r.protonVersion ? ' · ' + r.protonVersion : '') +
+                ' · ' + relativeTime(r.timestamp) +
+              '</div>' +
+              (notes ? '<p style="margin:6px 0 0;font-size:13px">' + notes.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</p>' : '') +
+            '</div>';
+          }).join('');
+          communityBody.innerHTML = '<p class="report-meta" style="margin-bottom:8px">Total: ' + data.total + ' relatos</p>' + html;
+        })
+        .catch(err => {
+          communityBody.innerHTML = '<p style="color:var(--tier-borked);font-size:13px">Erro ao buscar: ' + err.message + '</p>';
+        });
+    });
+  }
+</script>
+
+<%- include('partials/shell-bot.ejs') %>

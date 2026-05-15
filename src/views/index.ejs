@@ -1,0 +1,81 @@
+<%- include('partials/shell-top.ejs', { title: 'Biblioteca', active: 'library' }) %>
+
+<div class="page-header">
+  <h1>Biblioteca</h1>
+  <span class="page-sub"><%= stats.total %> jogos · <%= stats.installed %> instalados<% if (stats.lastSync) { %> · sync <%= stats.lastSync.slice(0,16).replace('T',' ') %><% } %></span>
+</div>
+
+<% if (!stats.lastSync) { %>
+<div class="banner banner-warn">Banco vazio. <a href="/settings/steam">Configure as credenciais</a> e clique em <strong>Sync biblioteca</strong>.</div>
+<% } %>
+
+<section class="stats">
+  <% Object.entries(stats.byTier).forEach(function([t, n]) { %>
+    <div class="stat tier-<%= t %>"><span class="stat-num"><%= n %></span><span class="stat-label"><%= t %></span></div>
+  <% }); %>
+</section>
+
+<% if (system) { %>
+<details class="system">
+  <summary>Sistema detectado</summary>
+  <pre><%- JSON.stringify({
+    gpu: system.gpu && system.gpu.model,
+    session: system.session ? system.session.type + ' / ' + system.session.desktop : null,
+    monitor_primary: system.monitors && system.monitors[0]
+  }, null, 2) %></pre>
+</details>
+<% } %>
+
+<form class="filters" method="get" action="/">
+  <input type="search" name="search" value="<%= filters.search %>" placeholder="nome ou appid" />
+  <select name="tier">
+    <option value="">tier (todos)</option>
+    <% ['platinum','gold','silver','bronze','pending','borked','unknown','native'].forEach(function(t) { %>
+      <option value="<%= t %>" <%= filters.tier === t ? 'selected' : '' %>><%= t %></option>
+    <% }); %>
+  </select>
+  <select name="installed">
+    <option value="">instalado?</option>
+    <option value="1" <%= filters.installed === '1' ? 'selected' : '' %>>sim</option>
+    <option value="0" <%= filters.installed === '0' ? 'selected' : '' %>>não</option>
+  </select>
+  <button type="submit">filtrar</button>
+  <a class="clear" href="/">limpar</a>
+</form>
+
+<div class="table-wrap">
+<table class="games">
+  <thead>
+    <tr>
+      <th>appid</th>
+      <th>nome</th>
+      <th>tier</th>
+      <th>reports</th>
+      <th>horas</th>
+      <th>inst.</th>
+      <th>engine</th>
+      <th>config</th>
+      <th>★</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (empty) { %>
+      <tr><td colspan="9" class="empty">Nenhum jogo. Rode o Sync.</td></tr>
+    <% } else { games.forEach(function(g) { %>
+      <tr class="row-tier-<%= g.tier %>">
+        <td><code><%= g.appid %></code></td>
+        <td><a href="/game/<%= g.appid %>"><%= g.name %></a></td>
+        <td><span class="badge tier-<%= g.tier %>"><%= g.tier %></span></td>
+        <td><%= g.reports %></td>
+        <td><%= Math.round((g.playtime_minutes || 0) / 6) / 10 %></td>
+        <td><%= g.installed ? '✓' : '' %></td>
+        <td><%= g.engine || '—' %></td>
+        <td><span class="badge config-<%= g.config_source || 'generic' %>"><%= g.config_source || 'generic' %></span></td>
+        <td><%= g.user_launch_options ? '★' : '' %></td>
+      </tr>
+    <% }); } %>
+  </tbody>
+</table>
+</div>
+
+<%- include('partials/shell-bot.ejs') %>

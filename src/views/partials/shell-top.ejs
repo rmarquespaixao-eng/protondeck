@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> · steam-config-panel</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="/">
+        steam-config-panel
+        <span class="sidebar-brand-mini">Proton launch options</span>
+      </a>
+
+      <div class="sidebar-section-label">Biblioteca</div>
+      <a href="/" class="sidebar-link <%= active === 'library' ? 'active' : '' %>">
+        <span class="icon">▣</span> Jogos
+      </a>
+
+      <div class="sidebar-section-label">Configurações</div>
+      <a href="/settings/steam" class="sidebar-link <%= active === 'steam' ? 'active' : '' %>">
+        <span class="icon">⊙</span> Steam Credentials
+      </a>
+      <a href="/settings/ai" class="sidebar-link <%= active === 'ai' ? 'active' : '' %>">
+        <span class="icon">✦</span> AI Provider
+      </a>
+
+      <div class="sidebar-footer">
+        <form method="post" action="/sync">
+          <button type="submit" class="sidebar-sync" title="Re-roda steam-launch dashboard:snapshot">↻ Sync biblioteca</button>
+        </form>
+        <div class="sidebar-version">v0.2</div>
+      </div>
+    </aside>
+    <main class="main-content">
