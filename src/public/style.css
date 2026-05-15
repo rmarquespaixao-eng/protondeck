@@ -1266,3 +1266,74 @@ form textarea {
   font-weight: 600;
 }
 .sidebar-logout:hover { color: var(--tier-borked); }
+
+/* ── Launch curada + notas pessoais (game.ejs unified) ── */
+.launch-curated-section {
+  margin: 24px 0 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 10px 14px;
+  background: color-mix(in srgb, var(--panel) 50%, transparent);
+}
+.launch-curated-section summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  padding: 4px 0;
+}
+.launch-curated-section[open] summary { margin-bottom: 8px; }
+.launch-curated-section pre.copy {
+  margin: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  cursor: pointer;
+  color: var(--text);
+}
+.launch-curated-section pre.copy.flash { background: color-mix(in srgb, var(--accent) 18%, var(--bg-2)); }
+.curated-notes { margin-top: 10px; }
+.curated-notes ul { margin: 4px 0; padding-left: 18px; font-size: 13px; color: var(--text); }
+.curated-notes li { margin: 2px 0; }
+
+.user-notes-section { margin: 28px 0 16px; }
+.user-notes-section h2 { margin: 0 0 10px; font-size: 16px; }
+.user-notes-section textarea {
+  width: 100%;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.user-notes-section .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.user-notes-section .actions button {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.user-notes-section .actions button.danger { color: var(--tier-borked); border-color: color-mix(in srgb, var(--tier-borked) 30%, var(--border)); }
+
+.btn-clear {
+  background: transparent;
+  color: var(--tier-borked);
+  border: 1px solid color-mix(in srgb, var(--tier-borked) 30%, var(--border));
+}
+.btn-clear:hover { background: color-mix(in srgb, var(--tier-borked) 10%, transparent); }

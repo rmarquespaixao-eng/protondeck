@@ -2,6 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { getGame, updateGameUserFields, clearGameUserFields, getSystemInfo } from '../db.js';
 import { syncFromSteamLaunch } from '../sync.js';
 import { fetchCommunityReports } from '../protondb-community.js';
+import {
+  ENV_OPTIONS, ARG_OPTIONS, WRAPPER_OPTIONS, GAMESCOPE_OPTIONS,
+  RESOLUTION_FORMATS, ENGINE_PRESETS
+} from '../config-catalog.js';
+import { COMPAT_RULES } from '../compatibility-rules.js';
+import { parseLaunchString } from '../launch-parser.js';
 
 type Monitor = { name: string; width: number; height: number; refresh: number; priority: number; hdr?: boolean };
 
@@ -9,7 +15,7 @@ type GameParams = { appid: string };
 type GameBody = {
   user_launch_options?: string;
   user_notes?: string;
-  action?: 'save' | 'clear_launch' | 'clear_notes';
+  action?: 'save' | 'save_launch' | 'save_notes' | 'clear_launch' | 'clear_notes';
 };
 
 export async function gameRoutes(fastify: FastifyInstance) {
@@ -22,7 +28,27 @@ export async function gameRoutes(fastify: FastifyInstance) {
     const system = getSystemInfo() as { monitors?: Monitor[] } | null;
     const monitors = system?.monitors ?? [];
     const currentMonitor = game.launch_options?.match(/SDL_VIDEO_FULLSCREEN_DISPLAYS=(\S+)/)?.[1] ?? null;
-    return reply.view('game.ejs', { game, notes, monitors, currentMonitor, currentUser: req.currentUser });
+
+    const launchStr = game.user_launch_options || game.launch_options || '';
+    const parsed = parseLaunchString(launchStr);
+    const enginePreset = ENGINE_PRESETS[game.engine ?? ''] ?? null;
+
+    return reply.view('game.ejs', {
+      game,
+      notes,
+      monitors,
+      currentMonitor,
+      envOptions: ENV_OPTIONS,
+      argOptions: ARG_OPTIONS,
+      wrapperOptions: WRAPPER_OPTIONS,
+      gamescopeOptions: GAMESCOPE_OPTIONS,
+      resolutionFormats: RESOLUTION_FORMATS,
+      compatRules: COMPAT_RULES,
+      enginePreset,
+      enginePresetsAll: ENGINE_PRESETS,
+      currentUser: req.currentUser,
+      ...parsed,
+    });
   });
 
   fastify.post<{ Params: GameParams; Body: GameBody }>('/game/:appid', async (req, reply) => {
@@ -35,6 +61,14 @@ export async function gameRoutes(fastify: FastifyInstance) {
       clearGameUserFields(appid, { user_launch_options: true });
     } else if (action === 'clear_notes') {
       clearGameUserFields(appid, { user_notes: true });
+    } else if (action === 'save_launch') {
+      updateGameUserFields(appid, {
+        user_launch_options: req.body.user_launch_options?.trim() || null
+      });
+    } else if (action === 'save_notes') {
+      updateGameUserFields(appid, {
+        user_notes: req.body.user_notes?.trim() || null
+      });
     } else {
       updateGameUserFields(appid, {
         user_launch_options: req.body.user_launch_options?.trim() || null,
@@ -54,7 +88,7 @@ export async function gameRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post('/sync', async (req, reply) => {
+  fastify.post('/sync', async (_req, reply) => {
     try {
       const r = await syncFromSteamLaunch();
       fastify.log.info(`sync ok: ${r.upserts} jogos @ ${r.generated_at}`);
