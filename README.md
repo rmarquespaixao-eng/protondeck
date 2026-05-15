@@ -1,6 +1,6 @@
-# steam-config-panel
+# ProtonDeck
 
-Dashboard pessoal das configs Proton da biblioteca Steam. Cruza Steam Web API + ProtonDB
+Dashboard self-hosted das configs Proton da biblioteca Steam. Cruza Steam Web API + ProtonDB
 + detec&ccedil;&atilde;o de hardware local, mostra tudo em uma tabela filtrav&eacute;l, deixa
 voc&ecirc; sobrescrever launch options por jogo, persiste tudo em SQLite.
 
