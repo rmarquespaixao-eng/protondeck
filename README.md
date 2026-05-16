@@ -203,6 +203,72 @@ backup `.protondeck.bak`. **Se o Steam estiver rodando**, o cliente
 sobrescreve o arquivo ao fechar — o painel detecta isso via `pgrep -x steam`
 e bloqueia o write com mensagem clara.
 
+## Tarball (recomendado pra uso completo)
+
+Pra rodar com TODAS as features (incluindo wizard de pacotes, sync,
+apply Steam, proton log) o painel precisa de acesso ao host — Docker
+isola e bloqueia tudo isso. Use o tarball release:
+
+### Gerar o tarball (no repo)
+
+```bash
+npm run release
+# gera dist-release/protondeck-<version>.tar.gz (~22 MB)
+```
+
+### Instalar (na máquina alvo)
+
+```bash
+tar xzf protondeck-0.1.0.tar.gz
+cd protondeck-0.1.0
+./install.sh
+```
+
+O `install.sh`:
+
+- copia tudo pra `~/.local/share/protondeck/` (override via `PROTONDECK_HOME`);
+- gera `.env` com `SESSION_KEY` aleat&oacute;ria (64 hex chars);
+- cria `~/.config/systemd/user/protondeck.service`;
+- preserva `data/` e `.env` em re-execu&ccedil;&otilde;es (upgrade).
+
+Pra subir:
+
+```bash
+systemctl --user enable --now protondeck   # roda agora + ao boot
+systemctl --user status protondeck         # ver estado
+journalctl --user -u protondeck -f         # logs
+```
+
+Pra rodar mesmo ap&oacute;s logout (background persistente em servidor sem GUI):
+
+```bash
+sudo loginctl enable-linger $USER
+```
+
+### Atualizar
+
+```bash
+tar xzf protondeck-0.2.0.tar.gz
+cd protondeck-0.2.0
+./install.sh           # detecta install existente, preserva data/ e .env
+systemctl --user restart protondeck
+```
+
+### Desinstalar
+
+```bash
+~/.local/share/protondeck/uninstall.sh
+# pergunta se quer manter ou apagar data/ (panel.db)
+```
+
+### Pegadinha do Node manager
+
+O `install.sh` resolve o path do `node` na hora do install (via `command -v
+node`). Se voc&ecirc; usa **fnm/nvm/asdf** e trocar a vers&atilde;o ativa,
+o `ExecStart` da unit pode apontar pra um caminho que sumiu. Sintomas:
+`systemctl status protondeck` mostra `status=203/EXEC`. Solu&ccedil;&atilde;o: rodar
+`./install.sh` de novo pra re-resolver o path.
+
 ## Docker
 
 ```bash
