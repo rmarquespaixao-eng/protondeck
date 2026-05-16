@@ -1,0 +1,17 @@
+services:
+  protondeck:
+    build: .
+    image: protondeck:latest
+    container_name: protondeck
+    restart: unless-stopped
+    ports:
+      - "3030:3030"
+    environment:
+      # Gere com: openssl rand -hex 32
+      SESSION_KEY: ${SESSION_KEY:?SESSION_KEY obrigatoria — gere com "openssl rand -hex 32"}
+      # NODE_ENV em production faz o cookie sair com Secure (so HTTPS).
+      # Mantenha development atras de reverse proxy plain-HTTP local.
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      # Persiste panel.db + community-cache entre restarts
+      - ./data:/app/data

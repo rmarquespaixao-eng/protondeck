@@ -1,74 +1,93 @@
 # ProtonDeck
 
-Plataforma self-hosted de curadoria Proton: cruza Steam Web API + ProtonDB +
-PCGamingWiki + detec&ccedil;&atilde;o de hardware local, deixa voc&ecirc;
-sobrescrever launch options por jogo via builder visual, verifica
-compatibilidade de jogos antes de comprar, instala o stack de gaming Proton na
-sua distro e aplica config direto no `localconfig.vdf` do Steam.
+Plataforma self-hosted de curadoria Proton pra Linux gamers. Combina Steam
+Web API, ProtonDB, PCGamingWiki e detec&ccedil;&atilde;o de hardware local
+pra te ajudar a configurar jogos com Proton, verificar compatibilidade antes
+de comprar, e instalar o stack de gaming na sua distro.
 
 Stack: Fastify 5 + TypeScript + better-sqlite3 + EJS (server-rendered, sem SPA).
+Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 
-## Features
+## O que tem
 
-- **Dashboard** (`/`) — stats da biblioteca, distribui&ccedil;&atilde;o por tier
-  ProtonDB, atalhos pros principais fluxos.
-- **Biblioteca** (`/games`) — tabela filtravel da Steam library com tier
-  ProtonDB, engine detectada, Proton version, override pessoal por jogo.
-- **Builder de launch options** (`/game/:appid`) — checkboxes pra gamescope,
-  env vars (DXVK, VKD3D, Proton, NVIDIA), args, presets por engine, preview ao
-  vivo, diagnostico de conflitos via COMPAT_RULES e assistente IA (Anthropic /
-  OpenAI / Ollama).
-- **Detector PCGamingWiki** — em cada jogo, mostra suporte a widescreen 16:9 /
-  ultra-widescreen 21:9 / multi-monitor / 4K / FOV, com notas extraidas da
-  wiki (`Use REFramework + mod X`, etc).
-- **"Vai rodar?"** (`/check`) — busca jogo na Steam por nome e cruza ProtonDB
-  + PCGW + Steam Store; retorna recomenda&ccedil;&atilde;o em 5 niveis
-  (go / caution / risky / unreleased / no-data).
-- **Wizard de pacotes** (`/system`) — detecta distro (Arch/CachyOS,
-  Ubuntu/Debian, Fedora) + GPU e instala em tempo real via SSE o stack
-  Proton: gamescope, mangohud, gamemode, Vulkan, Steam, protontricks.
-  Segurança via sudoers whitelist (sem daemon root, sem shell arbitrario).
-- **Backup &amp; Import** (`/backup`) — exporta seus overrides em JSON;
-  importa com preview antes de aplicar.
-- **Aplicar direto no Steam** — botao no detalhe do jogo edita o
-  `~/.steam/steam/userdata/<id>/config/localconfig.vdf`, com backup
-  automatico e b&aacute;rrera se o cliente Steam estiver rodando.
-- **Auth single-user** — login/setup com bcrypt, sess&atilde;o assinada via
-  `@fastify/secure-session`.
+| Area                          | URL          | O que faz                                                                                     |
+|-------------------------------|--------------|-----------------------------------------------------------------------------------------------|
+| **Dashboard**                 | `/`          | stats da biblioteca, distribui&ccedil;&atilde;o por tier ProtonDB, atalhos pros principais fluxos. |
+| **Biblioteca**                | `/games`     | tabela filtravel da Steam library: tier, engine detectada, Proton version, override pessoal. |
+| **Editor de launch options**  | `/game/:appid` | builder visual com checkboxes pra gamescope, env vars (DXVK/VKD3D/Proton/NVIDIA), args, presets por engine, preview ao vivo, diagnostico de conflitos, assistente IA. |
+| **PCGamingWiki widescreen**   | (dentro do `/game/:appid`) | suporte a widescreen 16:9 / ultra-widescreen 21:9 / multi-monitor / 4K / FOV, com notas extraidas da wiki. |
+| **"Vai rodar?"**              | `/check`     | busca jogo na Steam por nome (mesmo que nao esteja na biblioteca) e cruza ProtonDB + PCGW + Steam Store; retorna recomendacao em 5 niveis (go / caution / risky / unreleased / no-data). |
+| **Wizard de pacotes**         | `/system`    | detecta distro (Arch/CachyOS, Ubuntu/Debian, Fedora) + GPU e instala em tempo real via SSE o stack Proton (gamescope, mangohud, gamemode, Vulkan, Steam, protontricks). |
+| **Backup &amp; Import**       | `/backup`    | exporta seus overrides em JSON; importa com preview antes de aplicar.                       |
+| **Aplicar direto no Steam**   | botao em `/game/:appid` | edita `~/.steam/steam/userdata/&lt;id&gt;/config/localconfig.vdf` com backup automatico e barreira se o cliente Steam estiver rodando. |
+| **Auth single-user**          | `/setup` &rarr; `/login` | bcrypt + sess&atilde;o assinada via `@fastify/secure-session`.                    |
 
-## Pre-requisitos
+## Arquitetura
 
-1. A skill `steam-launch` instalada em `~/.claude/tools/steam-launch/` (ou
-   symlinked do repo `claude-skills`).
-2. `credentials.json` configurado em
-   `~/.claude/tools/steam-launch/data/credentials.json`:
+```
+src/
+  domain/                  # entidades + funcoes puras (zero I/O)
+    games/                 LaunchOptions, ConfigCatalog, CompatibilityRules, VdfParser
+    check/                 CheckResult, ProtonReport, Recommendation
+    pcgw/                  WidescreenInfo
+    system/                Recipes, SudoersTemplate, SystemTypes
 
-   ```json
-   {
-     "steam_api_key": "...",
-     "steam_id64": "..."
-   }
-   ```
+  ports/                   # interfaces dos adapters externos (TS interfaces)
+    GameRepository, UserRepository, AIConfigRepository, SteamConfigRepository,
+    CacheRepository, SnapshotRepository, SystemInfoRepository,
+    PCGWClient, CheckClients, ProtonDBCommunityClient, SteamLocalConfigClient,
+    ProtonLogReader, SystemDetector, SystemRunner
 
-3. Node.js 20.12+ (precisa do `process.loadEnvFile`).
+  app/                     # use cases — orquestram domain + ports
+    games/GamesService, dashboard/DashboardService, check/CheckService,
+    pcgw/PCGWService, system/SystemService, backup/BackupService,
+    auth/AuthService, steam-apply/SteamApplyService, sync/SyncService,
+    ai/AIService
 
-## Setup
+  adapters/
+    primary/               # driving (recebem comandos do mundo)
+      http/                Fastify Server.ts + routes/ + views/ + public/
+    secondary/             # driven (chamados pelos use cases)
+      sqlite/              connection.ts + 1 repo por dominio
+      http-clients/        PCGWMediaWiki, ProtonDB (summary + community), SteamSearch, SteamStore
+      ai/                  AIProvider (multi-provider Anthropic/OpenAI/Ollama) + Prompts + Tools
+      fs/                  SteamLocalConfigFs, ProtonLogFs
+      system/              LinuxSystemDetector, SudoSystemRunner
+      shared/              fetch helper
 
-```bash
-npm install
-cp .env.example .env
-# Gera a chave de sessao (32 bytes hex) e adiciona no .env:
-echo "SESSION_KEY=$(openssl rand -hex 32)" >> .env
-npm run sync     # popula data/panel.db com o snapshot inicial (chama steam-launch)
-npm run dev      # http://localhost:3030
+  composition.ts           # monta o grafo de deps
+  main.ts                  # entry point HTTP
+  cli/sync.command.ts      # CLI: npm run sync
 ```
 
-O `.env` é carregado automaticamente via `process.loadEnvFile()`. Tambem da
-pra exportar `SESSION_KEY` direto no shell em vez de usar `.env`.
+A regra-chave: **domain &amp; app n&atilde;o importam de adapters**. Toda
+depend&ecirc;ncia externa entra via `ports/`. Trocar SQLite por Postgres,
+ou Anthropic por OpenAI, mexe s&oacute; em uma camada.
 
-No primeiro acesso, o painel redireciona pra `/setup` pra criar a conta admin
-(user/senha persistidos no SQLite com bcrypt). Single-user: nao tem cadastro
-aberto, so o admin inicial. Pra resetar, apague a linha em `users`:
+## Setup (desenvolvimento)
+
+```bash
+git clone ssh://git@gitea.homelab-cloud.com:2222/admin/protondeck.git
+cd protondeck
+npm install
+cp .env.example .env
+echo "SESSION_KEY=$(openssl rand -hex 32)" >> .env
+
+# Popula data/panel.db chamando o skill steam-launch
+npm run sync
+
+# Sobe em http://localhost:3030
+npm run dev
+```
+
+Requisitos:
+
+- Node.js &ge; 20.12 (precisa do `process.loadEnvFile`)
+- Skill `steam-launch` instalada em `~/.claude/tools/steam-launch/` (ou path em `STEAM_LAUNCH_TOOL`)
+- `credentials.json` em `~/.claude/tools/steam-launch/data/` com `steam_api_key` + `steam_id64`
+
+No primeiro acesso o painel redireciona pra `/setup` pra criar a conta admin.
+Single-user — n&atilde;o tem cadastro aberto. Pra resetar:
 
 ```bash
 sqlite3 data/panel.db "DELETE FROM users;"
@@ -76,26 +95,77 @@ sqlite3 data/panel.db "DELETE FROM users;"
 
 ### Wizard de pacotes — sudoers (uma vez)
 
-Pra evitar prompt de senha a cada install, o painel precisa de um arquivo em
-`/etc/sudoers.d/protondeck` com whitelist restrita (so subcomandos de
-install/sync do pkg manager — nao permite `-R` nem `-U`). Abra `/system` na UI
-que ele gera o comando exato pra sua distro/usuario; rode no terminal:
+Pra evitar prompt de senha a cada install, o painel precisa de um
+`/etc/sudoers.d/protondeck` com whitelist restrita (s&oacute; subcomandos de
+install/sync — n&atilde;o permite `-R` nem `-U`). Abra `/system` na UI que
+ele gera o comando exato pra sua distro/usuario; rode no terminal:
 
 ```bash
 sudo tee /etc/sudoers.d/protondeck > /dev/null <<'EOF'
 USER ALL=(root) NOPASSWD: /usr/bin/pacman -S --needed --noconfirm *
-# ... resto gerado dinamicamente
+# ... resto gerado dinamicamente pela tela
 EOF
 sudo chmod 440 /etc/sudoers.d/protondeck
 sudo visudo -c -f /etc/sudoers.d/protondeck
 ```
 
-### Aplicar no Steam — requer cliente fechado
+### Aplicar direto no Steam — requer cliente fechado
 
 A rota `POST /api/game/:appid/apply-steam` edita o `localconfig.vdf` e faz
-backup `.protondeck.bak`. **Se o Steam estiver rodando**, o cliente sobrescreve
-o arquivo ao fechar — o painel detecta isso via `pgrep -x steam` e bloqueia o
-write com mensagem clara.
+backup `.protondeck.bak`. **Se o Steam estiver rodando**, o cliente
+sobrescreve o arquivo ao fechar — o painel detecta isso via `pgrep -x steam`
+e bloqueia o write com mensagem clara.
+
+## Docker
+
+```bash
+# 1. Configura env
+echo "SESSION_KEY=$(openssl rand -hex 32)" > .env
+
+# 2. Sobe
+docker compose up -d
+# (primeiro build ~2 min — compila better-sqlite3 nativo)
+
+# 3. Abre http://localhost:3030
+
+# Logs
+docker compose logs -f protondeck
+
+# Parar
+docker compose down
+```
+
+Variaveis de ambiente (alem do `SESSION_KEY` obrigatorio):
+
+| Var                          | Default                       | O que faz                                    |
+|------------------------------|-------------------------------|----------------------------------------------|
+| `PORT`                       | `3030`                        | porta HTTP                                   |
+| `HOST`                       | `0.0.0.0` no container        | bind address                                 |
+| `NODE_ENV`                   | `development`                 | em `production` o cookie sai com `Secure`    |
+| `PROTONDECK_DB`              | `/app/data/panel.db`          | path do SQLite                               |
+| `PROTONDECK_COMMUNITY_CACHE` | `/app/data/community-cache`   | cache dos relatos ProtonDB                   |
+
+Persist&ecirc;ncia: o `docker-compose.yml` mont&aacute; `./data` em `/app/data`,
+ent&atilde;o `panel.db` + caches sobrevivem ao restart.
+
+### Limita&ccedil;&otilde;es do Docker
+
+A imagem &eacute; auto-contida, mas algumas features dependem do **host**:
+
+| Feature                  | Funciona no container? | Por qu&ecirc;                                                             |
+|--------------------------|------------------------|---------------------------------------------------------------------------|
+| Dashboard / Biblioteca   | sim                    | s&oacute; le do SQLite local                                              |
+| Editor de launch options | sim                    | pura logica + ProtonDB API publica                                        |
+| `/check`                 | sim                    | chama APIs publicas (Steam search/store, ProtonDB, PCGW)                  |
+| Backup &amp; Import      | sim                    | s&oacute; le/escreve no SQLite local                                      |
+| **Wizard de pacotes**    | **n&atilde;o**         | precisa de `pacman/apt/dnf` + `sudo` + `/etc/os-release` **do host**     |
+| **Apply no Steam**       | **parcial**            | precisa montar `~/.steam` como volume + Steam fechado                    |
+| **Sync biblioteca**      | **n&atilde;o**         | precisa do skill local `steam-launch` (n&atilde;o vem na imagem)         |
+
+Pra cobrir o caso de uso completo (com wizard + sync), rode direto em
+`npm run dev` no host. O Docker &eacute; ideal pra expor o painel num
+servidor remoto (ex.: VPS) cobrindo as features que n&atilde;o dependem
+do host.
 
 ## Workflow
 
@@ -108,55 +178,15 @@ write com mensagem clara.
 | Trocando de PC                      | `/backup` exporta JSON; importe na maquina nova               |
 | Setup inicial em distro nova        | `/system` detecta e instala stack de gaming Proton            |
 
-## Schema
+## Schema do banco
 
 - `games` — uma linha por jogo da biblioteca, com snapshot ProtonDB + launch
   options geradas + colunas `user_launch_options` / `user_notes` que
   sobrevivem aos syncs.
 - `snapshots` — historico de cada sync (raw JSON).
-- `system_info` — uma linha singleton com hardware/monitor detectado no
-  ultimo sync.
+- `system_info` — singleton com hardware/monitor detectado no ultimo sync.
 - `users` — conta admin (single-user), `password_hash` bcrypt.
 - `ai_config` / `ai_cache` — provider e cache de respostas IA.
-- `steam_config` — credenciais Steam (api_key + steam_id64).
+- `steam_config` — credenciais Steam (`api_key` + `steam_id64`).
 - `pcgw_cache` — cache de paginas do PCGamingWiki (7d hits / 1d falhas).
 - `external_cache` — cache generico (ProtonDB, Steam Store, Steam Search).
-
-## Estrutura
-
-```
-src/
-  server.ts              # Fastify + view + static + secure-session
-  db.ts                  # better-sqlite3 + migrations + helpers
-  sync.ts                # CLI: chama steam-launch, popula SQLite
-  check.ts               # consolidador Steam search + ProtonDB + Store
-  pcgw.ts                # scraper MediaWiki da PCGamingWiki
-  launch-parser.ts       # parser bidirecional de launch options
-  steam-localconfig.ts   # parser/writer do VDF do Steam
-  ai-provider.ts         # client multi-provider (Anthropic/OpenAI/Ollama)
-  ai-prompts.ts          # system prompts especializados
-  ai-tools.ts            # tool definitions pra agent (proton log etc)
-  config-catalog.ts      # opts conhecidas (env, args, gamescope, engines)
-  compatibility-rules.ts # COMPAT_RULES (conflitos entre opts)
-  protondb-community.ts  # API de relatos individuais ProtonDB
-  proton-log.ts          # auto-read de PROTON_LOG=1 logs
-  system/
-    detect.ts            # distro, GPU vendor, libs instaladas
-    recipes.ts           # catalogo de pacotes por distro/GPU
-    runner.ts            # spawn sudo -n com stream line-by-line
-    sudoers.ts           # gera template /etc/sudoers.d/protondeck
-  routes/
-    index.ts             # GET / (dashboard), GET /games
-    game.ts              # GET/POST /game/:appid, sync, apply-steam, widescreen
-    config.ts            # legacy redirect 301 -> /game/:appid
-    auth.ts              # /setup, /login, /logout
-    ai.ts                # /api/game/:appid/{diagnose,suggest,troubleshoot}
-    steam.ts             # /settings/steam
-    check.ts             # /check, /api/check/search, /api/check/:appid
-    system.ts            # /system, /api/system/{scan,install,sudoers}
-    backup.ts            # /backup, /api/backup/{export,import}
-  views/                 # EJS templates
-  public/style.css
-  types/fastify.d.ts     # type augmentation pra session + currentUser
-data/                    # gitignored: panel.db + community-cache
-```
