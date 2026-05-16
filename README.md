@@ -190,6 +190,32 @@ Pra cobrir o caso de uso completo (com wizard + sync), rode direto em
 servidor remoto (ex.: VPS) cobrindo as features que n&atilde;o dependem
 do host.
 
+## Testes
+
+Cobertura m&iacute;nima focada em domain (fun&ccedil;&otilde;es puras) e
+application services (com fakes in-memory dos outbound ports):
+
+```bash
+npm test           # roda todos os *.test.ts em src/
+npm run typecheck  # inclui os testes na verifica&ccedil;&atilde;o de tipos
+```
+
+Stack: **`node:test`** (built-in do Node 20+) com **`tsx`** como loader.
+Zero deps de teste. Fakes em `src/test/fakes/` implementam os outbound
+ports, ent&atilde;o services s&atilde;o testados sem mexer no SQLite ou em
+APIs externas.
+
+Atualmente cobre (59 testes):
+
+- **`domain/games/LaunchOptions`** — parser do launch string (env vars, gamescope, args, resolu&ccedil;&atilde;o forced)
+- **`domain/games/VdfParser`** — leitura/escrita do `localconfig.vdf` do Steam (com round-trip)
+- **`domain/check/Recommendation`** — todos os 5 caminhos de recomenda&ccedil;&atilde;o (go/caution/risky/unreleased/no-data)
+- **`domain/system/SudoersTemplate`** — gera&ccedil;&atilde;o por distro + whitelist estrita (nao permite `-R`/`-U`)
+- **`application/services/GamesService`** — list/get/saveLaunch/clearNotes/etc
+- **`application/services/AuthService`** — bcrypt + valida&ccedil;&otilde;es de senha/usu&aacute;rio
+- **`application/services/BackupService`** — export/validate/plan/apply
+- **`application/services/DashboardService`** — stats consolidadas
+
 ## Workflow
 
 | Quando                              | Rode                                                          |
