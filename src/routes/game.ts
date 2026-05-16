@@ -1,8 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { getGame, updateGameUserFields, clearGameUserFields, getSystemInfo } from '../db.js';
+import { getGame, updateGameUserFields, clearGameUserFields, getSystemInfo, getSteamConfig } from '../db.js';
 import { syncFromSteamLaunch } from '../sync.js';
 import { fetchCommunityReports } from '../protondb-community.js';
 import { fetchWidescreenInfo } from '../pcgw.js';
+import { applyLaunchOptions, localConfigExists, isSteamRunning, readLaunchOptions } from '../steam-localconfig.js';
 import {
   ENV_OPTIONS, ARG_OPTIONS, WRAPPER_OPTIONS, GAMESCOPE_OPTIONS,
   RESOLUTION_FORMATS, ENGINE_PRESETS
@@ -96,6 +97,39 @@ export async function gameRoutes(fastify: FastifyInstance) {
     } catch (err) {
       fastify.log.error(err);
       return reply.code(502).send({ error: (err as Error).message });
+    }
+  });
+
+  fastify.get<{ Params: GameParams }>('/api/game/:appid/steam-launch', async (req, reply) => {
+    const cfg = getSteamConfig();
+    if (!cfg) return reply.send({ configured: false, reason: 'Steam credentials não configuradas (Configurações > Steam Credentials).' });
+    const exists = await localConfigExists(cfg.steam_id64);
+    if (!exists) return reply.send({ configured: true, available: false, reason: 'localconfig.vdf não encontrado/acessível pra este steamid.' });
+    const steamRunning = await isSteamRunning();
+    const current = await readLaunchOptions(cfg.steam_id64, req.params.appid);
+    return reply.send({
+      configured: true,
+      available: true,
+      steamRunning,
+      currentInSteam: current.value,
+      foundInSteam: current.found,
+      foundReason: current.reason ?? null,
+    });
+  });
+
+  fastify.post<{ Params: GameParams }>('/api/game/:appid/apply-steam', async (req, reply) => {
+    const game = getGame(req.params.appid);
+    if (!game) return reply.code(404).send({ error: 'jogo nao encontrado' });
+    const value = game.user_launch_options;
+    if (!value || !value.trim()) return reply.code(400).send({ error: 'Sem user_launch_options pra aplicar — salve override primeiro.' });
+    const cfg = getSteamConfig();
+    if (!cfg) return reply.code(400).send({ error: 'Steam credentials não configuradas (Configurações > Steam Credentials).' });
+    try {
+      const result = await applyLaunchOptions(cfg.steam_id64, req.params.appid, value);
+      if (!result.ok) return reply.code(409).send({ ...result, error: result.reason });
+      return reply.send(result);
+    } catch (err) {
+      return reply.code(500).send({ error: (err as Error).message });
     }
   });
 

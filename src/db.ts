@@ -309,6 +309,71 @@ export function clearGameUserFields(appid: string, fields: { user_launch_options
   db.prepare(`UPDATE games SET ${sets.join(', ')} WHERE appid = ?`).run(new Date().toISOString(), appid);
 }
 
+export type GameOverrideRow = {
+  appid: string;
+  name: string;
+  user_launch_options: string | null;
+  user_notes: string | null;
+};
+
+export function listOverrides(): GameOverrideRow[] {
+  return db.prepare(`
+    SELECT appid, name, user_launch_options, user_notes FROM games
+    WHERE user_launch_options IS NOT NULL OR user_notes IS NOT NULL
+    ORDER BY name COLLATE NOCASE
+  `).all() as GameOverrideRow[];
+}
+
+export type ImportPlanEntry = {
+  appid: string;
+  name: string | null;
+  inLibrary: boolean;
+  user_launch_options: string | null;
+  user_notes: string | null;
+};
+
+export function buildImportPlan(entries: { appid: string; user_launch_options?: string | null; user_notes?: string | null }[]): ImportPlanEntry[] {
+  const plan: ImportPlanEntry[] = [];
+  const lookup = db.prepare('SELECT name FROM games WHERE appid = ?');
+  for (const e of entries) {
+    const row = lookup.get(e.appid) as { name: string } | undefined;
+    plan.push({
+      appid: e.appid,
+      name: row?.name ?? null,
+      inLibrary: !!row,
+      user_launch_options: e.user_launch_options ?? null,
+      user_notes: e.user_notes ?? null,
+    });
+  }
+  return plan;
+}
+
+export function applyImport(entries: ImportPlanEntry[]): { applied: number; skipped: number } {
+  let applied = 0, skipped = 0;
+  const now = new Date().toISOString();
+  const stmt = db.prepare(`
+    UPDATE games SET
+      user_launch_options = @user_launch_options,
+      user_notes = @user_notes,
+      updated_at = @updated_at
+    WHERE appid = @appid
+  `);
+  const tx = db.transaction((items: ImportPlanEntry[]) => {
+    for (const it of items) {
+      if (!it.inLibrary) { skipped++; continue; }
+      stmt.run({
+        appid: it.appid,
+        user_launch_options: it.user_launch_options,
+        user_notes: it.user_notes,
+        updated_at: now,
+      });
+      applied++;
+    }
+  });
+  tx(entries);
+  return { applied, skipped };
+}
+
 export function getStats(): { total: number; byTier: Record<string, number>; installed: number; lastSync: string | null } {
   const total = (db.prepare('SELECT COUNT(*) AS n FROM games').get() as { n: number }).n;
   const byTier: Record<string, number> = {};

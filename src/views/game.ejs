@@ -275,6 +275,13 @@
         <% } %>
       </div>
 
+      <!-- Aplicar direto no Steam (edita localconfig.vdf) -->
+      <div class="steam-apply-panel" id="steam-apply-panel">
+        <div class="steam-apply-status" id="steam-apply-status">verificando localconfig.vdf…</div>
+        <button type="button" class="btn-preview btn-steam-apply" id="btn-steam-apply" disabled>Aplicar no Steam</button>
+        <div class="steam-apply-current" id="steam-apply-current"></div>
+      </div>
+
       <!-- Diagnóstico -->
       <div class="diag-panel">
         <div class="diag-title">Diagnóstico</div>
@@ -361,6 +368,80 @@
 </script>
 
 <script>
+  // ─── Aplicar direto no Steam (localconfig.vdf) ──────────
+  (function() {
+    var panel  = document.getElementById('steam-apply-panel');
+    var status = document.getElementById('steam-apply-status');
+    var btn    = document.getElementById('btn-steam-apply');
+    var curEl  = document.getElementById('steam-apply-current');
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+      });
+    }
+
+    function refresh() {
+      fetch('/api/game/' + GAME_APPID + '/steam-launch')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (!d.configured) {
+            status.innerHTML = '<span class="steam-apply-disabled">Configure <a href="/settings/steam">Steam Credentials</a> pra habilitar.</span>';
+            btn.disabled = true;
+            curEl.innerHTML = '';
+            return;
+          }
+          if (!d.available) {
+            status.innerHTML = '<span class="steam-apply-disabled">' + escapeHTML(d.reason || 'localconfig.vdf indisponível') + '</span>';
+            btn.disabled = true;
+            curEl.innerHTML = '';
+            return;
+          }
+          if (d.steamRunning) {
+            status.innerHTML = '<span class="steam-apply-warn">⚠ Steam rodando — feche o cliente antes de aplicar (não só minimize).</span>';
+            btn.disabled = true;
+          } else {
+            status.innerHTML = '<span class="steam-apply-ok">Pronto pra aplicar no localconfig.vdf.</span>';
+            btn.disabled = false;
+          }
+          if (d.foundInSteam) {
+            curEl.innerHTML = '<div class="steam-apply-current-label">Atualmente no Steam:</div>' +
+              '<pre class="steam-apply-current-val">' + escapeHTML(d.currentInSteam || '(vazio)') + '</pre>';
+          } else if (d.foundReason) {
+            curEl.innerHTML = '<span class="steam-apply-disabled">' + escapeHTML(d.foundReason) + '</span>';
+          } else {
+            curEl.innerHTML = '';
+          }
+        })
+        .catch(function(err) {
+          status.innerHTML = '<span class="steam-apply-disabled">erro: ' + escapeHTML(err.message) + '</span>';
+          btn.disabled = true;
+        });
+    }
+
+    btn.addEventListener('click', function() {
+      btn.disabled = true;
+      status.textContent = 'aplicando…';
+      fetch('/api/game/' + GAME_APPID + '/apply-steam', { method: 'POST' })
+        .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
+        .then(function(res) {
+          if (!res.ok) {
+            status.innerHTML = '<span class="steam-apply-warn">' + escapeHTML(res.body.error || 'falhou') + '</span>';
+            btn.disabled = false;
+            return;
+          }
+          status.innerHTML = '<span class="steam-apply-ok">✓ Aplicado. Backup: <code>' + escapeHTML(res.body.backupPath || '') + '</code></span>';
+          setTimeout(refresh, 800);
+        })
+        .catch(function(err) {
+          status.innerHTML = '<span class="steam-apply-warn">erro: ' + escapeHTML(err.message) + '</span>';
+          btn.disabled = false;
+        });
+    });
+
+    refresh();
+  })();
+
   // ─── PCGamingWiki widescreen support ────────────────────
   (function() {
     var FEATURE_LABEL = {

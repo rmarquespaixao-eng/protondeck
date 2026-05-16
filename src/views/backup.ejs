@@ -1,0 +1,122 @@
+<%- include('partials/shell-top.ejs', { title: 'Backup', active: 'backup', currentUser: currentUser }) %>
+
+<div class="page-header">
+  <h1>Backup &amp; Import</h1>
+  <span class="page-sub">Exporta seus overrides (<code>user_launch_options</code> + <code>user_notes</code>) num JSON — pra mover pra outra máquina ou compartilhar com amigos.</span>
+</div>
+
+<section class="backup-card">
+  <h2>Export</h2>
+  <p class="backup-explain">Baixa um JSON com todos os jogos que têm override ou notas pessoais. Não inclui dados da Steam — só o que você editou.</p>
+  <a href="/api/backup/export" class="btn-preview backup-download" download>↓ Baixar JSON</a>
+</section>
+
+<section class="backup-card">
+  <h2>Import</h2>
+  <p class="backup-explain">Aceita arquivos no formato <code>protondeck-config-export</code>. Faz preview antes — só aplica depois que você confirmar.</p>
+  <input type="file" id="backup-file" accept="application/json,.json" />
+  <div id="backup-preview"></div>
+</section>
+
+<script>
+(function() {
+  var fileEl = document.getElementById('backup-file');
+  var previewEl = document.getElementById('backup-preview');
+  var pendingPayload = null;
+
+  function escapeHTML(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+    });
+  }
+
+  fileEl.addEventListener('change', function() {
+    var file = fileEl.files && fileEl.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      try {
+        pendingPayload = JSON.parse(String(reader.result || ''));
+      } catch (e) {
+        previewEl.innerHTML = '<p class="backup-err">JSON inválido: ' + escapeHTML(e.message) + '</p>';
+        pendingPayload = null;
+        return;
+      }
+      preview();
+    };
+    reader.readAsText(file);
+  });
+
+  function preview() {
+    previewEl.innerHTML = '<p class="backup-loading">analisando…</p>';
+    fetch('/api/backup/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ payload: pendingPayload, apply: false }),
+    })
+    .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
+    .then(function(res) {
+      if (!res.ok) {
+        previewEl.innerHTML = '<p class="backup-err">' + escapeHTML(res.body.error || 'erro') + '</p>';
+        return;
+      }
+      renderPreview(res.body);
+    })
+    .catch(function(err) {
+      previewEl.innerHTML = '<p class="backup-err">erro: ' + escapeHTML(err.message) + '</p>';
+    });
+  }
+
+  function renderPreview(data) {
+    var s = data.summary;
+    var rows = data.plan.map(function(p) {
+      var status = p.inLibrary ? '<span class="backup-ok">✓ vai aplicar</span>' : '<span class="backup-warn">· não está na biblioteca, ignorado</span>';
+      var name = p.name || '<span class="backup-muted">(não importado)</span>';
+      return '<tr class="' + (p.inLibrary ? '' : 'backup-row-skip') + '">' +
+        '<td><code>' + escapeHTML(p.appid) + '</code></td>' +
+        '<td>' + name + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td><code class="backup-snippet">' + escapeHTML((p.user_launch_options || '').slice(0, 60)) + (p.user_launch_options && p.user_launch_options.length > 60 ? '…' : '') + '</code></td>' +
+      '</tr>';
+    }).join('');
+
+    previewEl.innerHTML =
+      '<div class="backup-summary">' +
+        '<strong>' + s.total + '</strong> entradas · ' +
+        '<span class="backup-ok">' + s.inLibrary + ' na biblioteca</span> · ' +
+        '<span class="backup-warn">' + s.notInLibrary + ' ignoradas</span>' +
+      '</div>' +
+      '<table class="backup-table">' +
+        '<thead><tr><th>appid</th><th>nome</th><th>status</th><th>launch (preview)</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+      (s.inLibrary > 0
+        ? '<button type="button" id="backup-apply" class="btn-preview">Aplicar import (sobrescreve ' + s.inLibrary + ' overrides existentes)</button>'
+        : '<p class="backup-muted">Nenhum jogo do JSON está na sua biblioteca local. Rode <code>npm run sync</code> primeiro.</p>');
+
+    var btn = document.getElementById('backup-apply');
+    if (btn) btn.addEventListener('click', applyImport);
+  }
+
+  function applyImport() {
+    previewEl.querySelector('#backup-apply').disabled = true;
+    fetch('/api/backup/import', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ payload: pendingPayload, apply: true }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      previewEl.innerHTML = '<p class="backup-ok">✓ Aplicado: ' + res.applied + ' overrides atualizados, ' + res.skipped + ' ignorados.</p>' +
+        '<p class="backup-muted">Os jogos atualizados agora mostram o novo override na lista da biblioteca.</p>';
+      pendingPayload = null;
+      fileEl.value = '';
+    })
+    .catch(function(err) {
+      previewEl.innerHTML = '<p class="backup-err">erro ao aplicar: ' + escapeHTML(err.message) + '</p>';
+    });
+  }
+})();
+</script>
+
+<%- include('partials/shell-bot.ejs') %>
