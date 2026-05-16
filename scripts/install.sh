@@ -25,13 +25,20 @@ echo "${BOLD}ProtonDeck install${RESET}"
 echo ""
 
 # Checagens
-command -v node >/dev/null || err "node nao encontrado. Instale Node.js >= 20.12 antes."
-NODE_VERSION=$(node -p "process.versions.node.split('.').map(Number)")
-NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
-if [ "$NODE_MAJOR" -lt 20 ]; then
-  err "Node.js >= 20.12 obrigatorio (detectado $(node -v))"
-fi
 command -v systemctl >/dev/null || warn "systemd nao detectado — pulando criacao do service"
+
+# Se o tarball tem node embarcado, usa-o e dispensa checagem do Node do sistema.
+# Senao, exige Node >= 20.12 no PATH.
+if [ -x "$SCRIPT_DIR/node" ]; then
+  EMBED_NODE_VERSION=$("$SCRIPT_DIR/node" -p "process.versions.node")
+  info "node v${EMBED_NODE_VERSION} embarcado no release — sem dependencia do Node do sistema"
+else
+  command -v node >/dev/null || err "node nao encontrado. Instale Node.js >= 20.12 antes (ou use release com node embarcado)."
+  NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
+  if [ "$NODE_MAJOR" -lt 20 ]; then
+    err "Node.js >= 20.12 obrigatorio (detectado $(node -v))"
+  fi
+fi
 
 # Validacao: este script precisa estar dentro do tarball extraido (dist/ + run.sh + package.json).
 # Se rodaram direto do repo (`./scripts/install.sh`), os arquivos faltam — abort com instrucao.

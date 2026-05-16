@@ -8,6 +8,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 resolve_node() {
+  # 0. Node embarcado no release — prioridade absoluta. Tarball self-contained
+  #    inclui $SCRIPT_DIR/node (mesma versao usada pra compilar better-sqlite3,
+  #    garantindo ABI match).
+  if [ -x "$SCRIPT_DIR/node" ]; then
+    export PATH="$SCRIPT_DIR:$PATH"
+    return 0
+  fi
+
   # 1. fnm — symlink aliases/default eh estavel (atualizado via "fnm alias default <ver>").
   # O symlink ja aponta pra <dir>/installation, entao node fica em aliases/default/bin/node.
   local fnm_dirs=(

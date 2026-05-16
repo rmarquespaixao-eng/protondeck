@@ -213,7 +213,24 @@ isola e bloqueia tudo isso. Use o tarball release:
 
 ```bash
 npm run release
-# gera dist-release/protondeck-<version>.tar.gz (~22 MB)
+# gera dist-release/protondeck-<version>.tar.gz (~63 MB com Node embarcado)
+```
+
+O build **embarca o bin&aacute;rio do Node** (mesma vers&atilde;o que rodou
+o `npm ci` — garante ABI match com `better-sqlite3`). Tarball fica
+totalmente self-contained: zero depend&ecirc;ncia do Node do sistema do
+user-alvo. Custo: ~40 MB a mais (Node ~30 MB compactado).
+
+Pra release "lite" sem embed (~22 MB; depende do Node do user-alvo):
+
+```bash
+NO_EMBED_NODE=1 npm run release
+```
+
+Por default empacota pra `linux-x64`. Pra outras arquiteturas:
+
+```bash
+NODE_ARCH=linux-arm64 npm run release
 ```
 
 ### Instalar (na máquina alvo)
@@ -261,20 +278,23 @@ systemctl --user restart protondeck
 # pergunta se quer manter ou apagar data/ (panel.db)
 ```
 
-### Node manager (fnm / nvm / asdf)
+### Resolu&ccedil;&atilde;o do Node
 
-O `ExecStart` da unit aponta pra `run.sh` — um wrapper que resolve o `node`
-**em runtime**, n&atilde;o no install. Cobre, em ordem:
+O `ExecStart` da unit aponta pra `run.sh` — um wrapper que resolve `node`
+em ordem de prioridade:
 
-1. **fnm** — symlink `~/.local/share/fnm/aliases/default` (estavel; atualiza
+1. **Node embarcado** no release — `$INSTALL_DIR/node` (preferido; release default).
+2. **fnm** — symlink `~/.local/share/fnm/aliases/default` (estavel; atualiza
    sozinho quando voc&ecirc; troca via `fnm alias default`).
-2. **nvm** — `~/.nvm/alias/default` (resolve cadeia `default → lts/iron → vX.Y.Z`).
-3. **asdf** — `~/.asdf/shims/node` (shims sao estaveis).
-4. **PATH** — fallback pro `node` que estiver no PATH.
+3. **nvm** — `~/.nvm/alias/default` (resolve cadeia `default → lts/iron → vX.Y.Z`).
+4. **asdf** — `~/.asdf/shims/node` (shims sao estaveis).
+5. **PATH** — fallback pro `node` que estiver no PATH (sistema).
 
-Isso significa que voc&ecirc; pode trocar de vers&atilde;o Node depois do
-install que o service continua funcionando. S&oacute; precisa reinstalar
-se mudar de **manager** (ex: migrar de nvm pra fnm).
+Com Node embarcado (default), o painel funciona em qualquer m&aacute;quina
+Linux x64 sem **nenhuma** depend&ecirc;ncia. Se voc&ecirc; usar release lite
+(`NO_EMBED_NODE=1`), o wrapper cai pros gerenciadores de versao acima — e
+voc&ecirc; pode trocar de vers&atilde;o Node sem reinstalar (s&oacute;
+precisa reinstalar se mudar de **manager**, ex: nvm → fnm).
 
 ## Docker
 
