@@ -156,9 +156,9 @@ export const ENV_OPTIONS: EnvOption[] = [
     tip: 'USE para apontar para um ~/.config/MangoHud/custom.conf com métricas específicas por jogo. Deixe vazio para usar a config global padrão.',
   },
   {
-    key: 'LD_PRELOAD', label: 'LD_PRELOAD', category: 'Performance', type: 'text', defaultValue: '',
-    description: 'Pré-carrega biblioteca .so antes do jogo — raramente necessário',
-    tip: 'USE apenas se precisar injetar uma biblioteca específica que não tem wrapper disponível. gamemode e mangohud têm wrappers próprios (marque nos Wrappers acima). Exemplo: "/usr/lib/libgamemodeauto.so" como alternativa ao wrapper gamemoderun.',
+    key: 'LD_PRELOAD', label: 'GameMode (LD_PRELOAD)', category: 'Performance', type: 'text', defaultValue: 'libgamemodeauto.so.0',
+    description: 'Ativa Feral GameMode oficial — daemon registra o PID, eleva prioridade de CPU/IO',
+    tip: 'Forma oficial Feral de ativar GameMode sem o script wrapper. Carrega libgamemodeauto.so.0 que se auto-registra no daemon gamemoded via D-Bus. REQUISITO: daemon rodando (`systemctl --user status gamemoded`). VALIDE com `gamemoded -t`. Se precisar pre-carregar OUTRA lib além da do GameMode, separe com `:` (ex: "libgamemodeauto.so.0:/path/outra.so"). Em distros com path nao-padrao, use absoluto: "/usr/lib/libgamemodeauto.so.0".',
   },
 ];
 
@@ -221,7 +221,6 @@ export const ARG_OPTIONS: ArgOption[] = [
 ];
 
 export const WRAPPER_OPTIONS: WrapperOption[] = [
-  { key: 'gamemoderun', label: 'GameMode', description: 'Prioridade CPU — scheduler otimizado', prefix: 'gamemoderun' },
   { key: 'mangohud', label: 'MangoHud', description: 'Overlay: FPS, GPU, CPU, temps, VRAM', prefix: 'mangohud' },
 ];
 
