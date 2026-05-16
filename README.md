@@ -8,6 +8,34 @@ de comprar, e instalar o stack de gaming na sua distro.
 Stack: Fastify 5 + TypeScript + better-sqlite3 + EJS (server-rendered, sem SPA).
 Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 
+## Screenshots
+
+| Dashboard                                | Builder de launch options (Evil West)  |
+|------------------------------------------|----------------------------------------|
+| ![Dashboard](docs/screenshots/02-dashboard.png) | ![Game detail](docs/screenshots/04-game-detail.png) |
+
+| "Vai rodar?" — Resident Evil 4           | Wizard de pacotes                      |
+|------------------------------------------|----------------------------------------|
+| ![Check RE4](docs/screenshots/06-check-detail.png) | ![System wizard](docs/screenshots/07-system.png) |
+
+| Biblioteca                               | Backup &amp; Import                    |
+|------------------------------------------|----------------------------------------|
+| ![Games](docs/screenshots/03-games.png)  | ![Backup](docs/screenshots/08-backup.png) |
+
+| "Vai rodar?" (busca vazia)               | Login                                  |
+|------------------------------------------|----------------------------------------|
+| ![Check empty](docs/screenshots/05-check-empty.png) | ![Login](docs/screenshots/01-login.png) |
+
+Pra regenerar os screenshots ap&oacute;s mudan&ccedil;as na UI:
+
+```bash
+npm run dev &                       # outro terminal
+node scripts/screenshots.mjs        # gera docs/screenshots/*.png
+```
+
+Script usa Playwright + Chromium headless. Faz login com o user/senha em
+`PD_USER` / `PD_PASSWORD` (defaults `admin` / `1354a52a`).
+
 ## O que tem
 
 | Area                          | URL          | O que faz                                                                                     |
