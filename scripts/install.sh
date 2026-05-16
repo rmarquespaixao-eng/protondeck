@@ -90,10 +90,12 @@ else
   info ".env existente preservado"
 fi
 
-# 3. systemd user service
+# 3. systemd user service (ExecStart aponta pro run.sh wrapper, que
+#    resolve node em runtime cobrindo fnm/nvm/asdf — imune a trocas
+#    de versao Node pelo user apos o install).
 if command -v systemctl >/dev/null; then
   mkdir -p "$UNIT_DIR"
-  NODE_BIN=$(command -v node)
+  chmod +x "$INSTALL_DIR/run.sh"
   cat > "$UNIT_DIR/protondeck.service" <<EOF
 [Unit]
 Description=ProtonDeck — Proton config dashboard
@@ -104,7 +106,7 @@ After=network.target
 Type=simple
 WorkingDirectory=$INSTALL_DIR
 EnvironmentFile=$INSTALL_DIR/.env
-ExecStart=$NODE_BIN $INSTALL_DIR/dist/main.js
+ExecStart=$INSTALL_DIR/run.sh
 Restart=on-failure
 RestartSec=5
 # Roda como user normal — sem privilegios extras

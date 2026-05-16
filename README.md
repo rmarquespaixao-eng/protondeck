@@ -261,13 +261,20 @@ systemctl --user restart protondeck
 # pergunta se quer manter ou apagar data/ (panel.db)
 ```
 
-### Pegadinha do Node manager
+### Node manager (fnm / nvm / asdf)
 
-O `install.sh` resolve o path do `node` na hora do install (via `command -v
-node`). Se voc&ecirc; usa **fnm/nvm/asdf** e trocar a vers&atilde;o ativa,
-o `ExecStart` da unit pode apontar pra um caminho que sumiu. Sintomas:
-`systemctl status protondeck` mostra `status=203/EXEC`. Solu&ccedil;&atilde;o: rodar
-`./install.sh` de novo pra re-resolver o path.
+O `ExecStart` da unit aponta pra `run.sh` — um wrapper que resolve o `node`
+**em runtime**, n&atilde;o no install. Cobre, em ordem:
+
+1. **fnm** — symlink `~/.local/share/fnm/aliases/default` (estavel; atualiza
+   sozinho quando voc&ecirc; troca via `fnm alias default`).
+2. **nvm** — `~/.nvm/alias/default` (resolve cadeia `default → lts/iron → vX.Y.Z`).
+3. **asdf** — `~/.asdf/shims/node` (shims sao estaveis).
+4. **PATH** — fallback pro `node` que estiver no PATH.
+
+Isso significa que voc&ecirc; pode trocar de vers&atilde;o Node depois do
+install que o service continua funcionando. S&oacute; precisa reinstalar
+se mudar de **manager** (ex: migrar de nvm pra fnm).
 
 ## Docker
 

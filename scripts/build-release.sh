@@ -26,9 +26,9 @@ cp -r src/adapters/in/http/public "$TARGET/dist/adapters/in/http/"
 
 cp package.json package-lock.json .env.example README.md "$TARGET/"
 
-# Scripts entrypoint
-cp scripts/install.sh scripts/uninstall.sh "$TARGET/"
-chmod +x "$TARGET/install.sh" "$TARGET/uninstall.sh"
+# Scripts entrypoint + wrapper de start
+cp scripts/install.sh scripts/uninstall.sh scripts/run.sh "$TARGET/"
+chmod +x "$TARGET/install.sh" "$TARGET/uninstall.sh" "$TARGET/run.sh"
 
 echo "▸ npm install (prod-only) no stage"
 ( cd "$TARGET" && npm ci --omit=dev --omit=optional --no-audit --no-fund --silent )
