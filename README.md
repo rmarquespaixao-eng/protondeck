@@ -1,7 +1,7 @@
 # ProtonDeck
 
 Plataforma self-hosted de curadoria Proton pra Linux gamers. Combina Steam
-Web API, ProtonDB, PCGamingWiki e detec&ccedil;&atilde;o de hardware local
+Web API, ProtonDB, PCGamingWiki e detecção de hardware local
 pra te ajudar a configurar jogos com Proton, verificar compatibilidade antes
 de comprar, e instalar o stack de gaming na sua distro.
 
@@ -26,7 +26,7 @@ Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 |------------------------------------------|----------------------------------------|
 | ![Check empty](docs/screenshots/05-check-empty.png) | ![Login](docs/screenshots/01-login.png) |
 
-Pra regenerar os screenshots ap&oacute;s mudan&ccedil;as na UI:
+Pra regenerar os screenshots após mudanças na UI:
 
 ```bash
 npm run dev &                       # outro terminal
@@ -40,7 +40,7 @@ Script usa Playwright + Chromium headless. Faz login com o user/senha em
 
 | Area                          | URL          | O que faz                                                                                     |
 |-------------------------------|--------------|-----------------------------------------------------------------------------------------------|
-| **Dashboard**                 | `/`          | stats da biblioteca, distribui&ccedil;&atilde;o por tier ProtonDB, atalhos pros principais fluxos. |
+| **Dashboard**                 | `/`          | stats da biblioteca, distribuição por tier ProtonDB, atalhos pros principais fluxos. |
 | **Biblioteca**                | `/games`     | tabela filtravel da Steam library: tier, engine detectada, Proton version, override pessoal. |
 | **Editor de launch options**  | `/game/:appid` | builder visual com checkboxes pra gamescope, env vars (DXVK/VKD3D/Proton/NVIDIA), args, presets por engine, preview ao vivo, diagnostico de conflitos, assistente IA. |
 | **PCGamingWiki widescreen**   | (dentro do `/game/:appid`) | suporte a widescreen 16:9 / ultra-widescreen 21:9 / multi-monitor / 4K / FOV, com notas extraidas da wiki. |
@@ -48,11 +48,11 @@ Script usa Playwright + Chromium headless. Faz login com o user/senha em
 | **Wizard de pacotes**         | `/system`    | detecta distro (Arch/CachyOS, Ubuntu/Debian, Fedora) + GPU e instala em tempo real via SSE o stack Proton (gamescope, mangohud, gamemode, Vulkan, Steam, protontricks). |
 | **Backup &amp; Import**       | `/backup`    | exporta seus overrides em JSON; importa com preview antes de aplicar.                       |
 | **Aplicar direto no Steam**   | botao em `/game/:appid` | edita `~/.steam/steam/userdata/&lt;id&gt;/config/localconfig.vdf` com backup automatico e barreira se o cliente Steam estiver rodando. |
-| **Auth single-user**          | `/setup` &rarr; `/login` | bcrypt + sess&atilde;o assinada via `@fastify/secure-session`.                    |
+| **Auth single-user**          | `/setup` → `/login` | bcrypt + sessão assinada via `@fastify/secure-session`.                    |
 
 ## Arquitetura
 
-Hexagonal cl&aacute;ssica (ports &amp; adapters de Cockburn) com camadas
+Hexagonal clássica (ports &amp; adapters de Cockburn) com camadas
 **domain / application / adapters**.
 
 ```mermaid
@@ -74,7 +74,7 @@ flowchart LR
     DOM["domain<br/>(funções puras, zero I/O)<br/>LaunchOptions · VdfParser<br/>ConfigCatalog · CompatibilityRules<br/>Recommendation · WidescreenInfo<br/>Recipes · SudoersTemplate"]
 
     subgraph out["adapters/out (driven)"]
-        SQLITE["SQLite repos<br/>1 por dom&iacute;nio"]
+        SQLITE["SQLite repos<br/>1 por domínio"]
         HTTPC["HTTP clients<br/>PCGW · ProtonDB · Steam"]
         AI["AI providers<br/>Anthropic · OpenAI · Ollama"]
         FS["Filesystem<br/>localconfig.vdf · proton-log"]
@@ -137,19 +137,19 @@ src/
   main.ts                          entry point HTTP
 ```
 
-Regras de depend&ecirc;ncia:
+Regras de dependência:
 
-- **`domain/`** n&atilde;o importa de ningu&eacute;m.
-- **`application/`** importa s&oacute; de `domain/` e dos pr&oacute;prios
+- **`domain/`** não importa de ninguém.
+- **`application/`** importa só de `domain/` e dos próprios
   `application/ports/`.
 - **`adapters/in/`** chama `application/ports/in/` (use cases).
 - **`adapters/out/`** implementa `application/ports/out/`.
-- **`composition.ts`** é o &uacute;nico arquivo que instancia adapters
+- **`composition.ts`** é o único arquivo que instancia adapters
   concretos e injeta no grafo.
 
-Trocar SQLite por Postgres mexe s&oacute; em `adapters/out/persistence/`.
-Trocar Anthropic por Bedrock mexe s&oacute; em `adapters/out/ai/`. Adicionar
-uma CLI nova mexe s&oacute; em `adapters/in/cli/`.
+Trocar SQLite por Postgres mexe só em `adapters/out/persistence/`.
+Trocar Anthropic por Bedrock mexe só em `adapters/out/ai/`. Adicionar
+uma CLI nova mexe só em `adapters/in/cli/`.
 
 ## Setup (desenvolvimento)
 
@@ -169,12 +169,12 @@ npm run dev
 
 Requisitos:
 
-- Node.js &ge; 20.12 (precisa do `process.loadEnvFile`)
+- Node.js ≥ 20.12 (precisa do `process.loadEnvFile`)
 - Skill `steam-launch` instalada em `~/.claude/tools/steam-launch/` (ou path em `STEAM_LAUNCH_TOOL`)
 - `credentials.json` em `~/.claude/tools/steam-launch/data/` com `steam_api_key` + `steam_id64`
 
 No primeiro acesso o painel redireciona pra `/setup` pra criar a conta admin.
-Single-user — n&atilde;o tem cadastro aberto. Pra resetar:
+Single-user — não tem cadastro aberto. Pra resetar:
 
 ```bash
 sqlite3 data/panel.db "DELETE FROM users;"
@@ -183,8 +183,8 @@ sqlite3 data/panel.db "DELETE FROM users;"
 ### Wizard de pacotes — sudoers (uma vez)
 
 Pra evitar prompt de senha a cada install, o painel precisa de um
-`/etc/sudoers.d/protondeck` com whitelist restrita (s&oacute; subcomandos de
-install/sync — n&atilde;o permite `-R` nem `-U`). Abra `/system` na UI que
+`/etc/sudoers.d/protondeck` com whitelist restrita (só subcomandos de
+install/sync — não permite `-R` nem `-U`). Abra `/system` na UI que
 ele gera o comando exato pra sua distro/usuario; rode no terminal:
 
 ```bash
@@ -216,9 +216,9 @@ npm run release
 # gera dist-release/protondeck-<version>.tar.gz (~63 MB com Node embarcado)
 ```
 
-O build **embarca o bin&aacute;rio do Node** (mesma vers&atilde;o que rodou
+O build **embarca o binário do Node** (mesma versão que rodou
 o `npm ci` — garante ABI match com `better-sqlite3`). Tarball fica
-totalmente self-contained: zero depend&ecirc;ncia do Node do sistema do
+totalmente self-contained: zero dependência do Node do sistema do
 user-alvo. Custo: ~40 MB a mais (Node ~30 MB compactado).
 
 Pra release "lite" sem embed (~22 MB; depende do Node do user-alvo):
@@ -244,9 +244,9 @@ cd protondeck-0.1.0
 O `install.sh`:
 
 - copia tudo pra `~/.local/share/protondeck/` (override via `PROTONDECK_HOME`);
-- gera `.env` com `SESSION_KEY` aleat&oacute;ria (64 hex chars);
+- gera `.env` com `SESSION_KEY` aleatória (64 hex chars);
 - cria `~/.config/systemd/user/protondeck.service`;
-- preserva `data/` e `.env` em re-execu&ccedil;&otilde;es (upgrade).
+- preserva `data/` e `.env` em re-execuções (upgrade).
 
 Pra subir:
 
@@ -256,7 +256,7 @@ systemctl --user status protondeck         # ver estado
 journalctl --user -u protondeck -f         # logs
 ```
 
-Pra rodar mesmo ap&oacute;s logout (background persistente em servidor sem GUI):
+Pra rodar mesmo após logout (background persistente em servidor sem GUI):
 
 ```bash
 sudo loginctl enable-linger $USER
@@ -278,22 +278,22 @@ systemctl --user restart protondeck
 # pergunta se quer manter ou apagar data/ (panel.db)
 ```
 
-### Resolu&ccedil;&atilde;o do Node
+### Resolução do Node
 
 O `ExecStart` da unit aponta pra `run.sh` — um wrapper que resolve `node`
 em ordem de prioridade:
 
 1. **Node embarcado** no release — `$INSTALL_DIR/node` (preferido; release default).
 2. **fnm** — symlink `~/.local/share/fnm/aliases/default` (estavel; atualiza
-   sozinho quando voc&ecirc; troca via `fnm alias default`).
+   sozinho quando você troca via `fnm alias default`).
 3. **nvm** — `~/.nvm/alias/default` (resolve cadeia `default → lts/iron → vX.Y.Z`).
 4. **asdf** — `~/.asdf/shims/node` (shims sao estaveis).
 5. **PATH** — fallback pro `node` que estiver no PATH (sistema).
 
-Com Node embarcado (default), o painel funciona em qualquer m&aacute;quina
-Linux x64 sem **nenhuma** depend&ecirc;ncia. Se voc&ecirc; usar release lite
+Com Node embarcado (default), o painel funciona em qualquer máquina
+Linux x64 sem **nenhuma** dependência. Se você usar release lite
 (`NO_EMBED_NODE=1`), o wrapper cai pros gerenciadores de versao acima — e
-voc&ecirc; pode trocar de vers&atilde;o Node sem reinstalar (s&oacute;
+você pode trocar de versão Node sem reinstalar (só
 precisa reinstalar se mudar de **manager**, ex: nvm → fnm).
 
 ## Docker
@@ -325,62 +325,62 @@ Variaveis de ambiente (alem do `SESSION_KEY` obrigatorio):
 | `PROTONDECK_DB`              | `/app/data/panel.db`          | path do SQLite                               |
 | `PROTONDECK_COMMUNITY_CACHE` | `/app/data/community-cache`   | cache dos relatos ProtonDB                   |
 
-Persist&ecirc;ncia: o `docker-compose.yml` mont&aacute; `./data` em `/app/data`,
-ent&atilde;o `panel.db` + caches sobrevivem ao restart.
+Persistência: o `docker-compose.yml` montá `./data` em `/app/data`,
+então `panel.db` + caches sobrevivem ao restart.
 
-### Limita&ccedil;&otilde;es do Docker
+### Limitações do Docker
 
-A imagem &eacute; auto-contida, mas algumas features dependem do **host**:
+A imagem é auto-contida, mas algumas features dependem do **host**:
 
-| Feature                  | Funciona no container? | Por qu&ecirc;                                                             |
+| Feature                  | Funciona no container? | Por quê                                                             |
 |--------------------------|------------------------|---------------------------------------------------------------------------|
-| Dashboard / Biblioteca   | sim                    | s&oacute; le do SQLite local                                              |
+| Dashboard / Biblioteca   | sim                    | só le do SQLite local                                              |
 | Editor de launch options | sim                    | pura logica + ProtonDB API publica                                        |
 | `/check`                 | sim                    | chama APIs publicas (Steam search/store, ProtonDB, PCGW)                  |
-| Backup &amp; Import      | sim                    | s&oacute; le/escreve no SQLite local                                      |
-| **Wizard de pacotes**    | **n&atilde;o**         | precisa de `pacman/apt/dnf` + `sudo` + `/etc/os-release` **do host**     |
+| Backup &amp; Import      | sim                    | só le/escreve no SQLite local                                      |
+| **Wizard de pacotes**    | **não**         | precisa de `pacman/apt/dnf` + `sudo` + `/etc/os-release` **do host**     |
 | **Apply no Steam**       | **parcial**            | precisa montar `~/.steam` como volume + Steam fechado                    |
-| **Sync biblioteca**      | **n&atilde;o**         | precisa do skill local `steam-launch` (n&atilde;o vem na imagem)         |
+| **Sync biblioteca**      | **não**         | precisa do skill local `steam-launch` (não vem na imagem)         |
 
 Pra cobrir o caso de uso completo (com wizard + sync), rode direto em
-`npm run dev` no host. O Docker &eacute; ideal pra expor o painel num
-servidor remoto (ex.: VPS) cobrindo as features que n&atilde;o dependem
+`npm run dev` no host. O Docker é ideal pra expor o painel num
+servidor remoto (ex.: VPS) cobrindo as features que não dependem
 do host.
 
 ## Testes
 
-Cobertura m&iacute;nima focada em domain (fun&ccedil;&otilde;es puras) e
+Cobertura mínima focada em domain (funções puras) e
 application services (com fakes in-memory dos outbound ports):
 
 ```bash
 npm test           # roda todos os *.test.ts em src/
-npm run typecheck  # inclui os testes na verifica&ccedil;&atilde;o de tipos
+npm run typecheck  # inclui os testes na verificação de tipos
 ```
 
 Stack: **`node:test`** (built-in do Node 20+) com **`tsx`** como loader.
 Zero deps de teste. Fakes em `src/test/fakes/` implementam os outbound
-ports, ent&atilde;o services s&atilde;o testados sem mexer no SQLite ou em
+ports, então services são testados sem mexer no SQLite ou em
 APIs externas.
 
 Atualmente cobre (94 testes em 14 arquivos):
 
 **Domain (33 testes):**
-- **`domain/games/LaunchOptions`** (6) — parser do launch string (env vars, gamescope, args, resolu&ccedil;&atilde;o forced)
+- **`domain/games/LaunchOptions`** (6) — parser do launch string (env vars, gamescope, args, resolução forced)
 - **`domain/games/VdfParser`** (10) — leitura/escrita do `localconfig.vdf` do Steam (com round-trip)
-- **`domain/check/Recommendation`** (10) — todos os 5 caminhos de recomenda&ccedil;&atilde;o (go/caution/risky/unreleased/no-data)
-- **`domain/system/SudoersTemplate`** (7) — gera&ccedil;&atilde;o por distro + whitelist estrita (nao permite `-R`/`-U`)
+- **`domain/check/Recommendation`** (10) — todos os 5 caminhos de recomendação (go/caution/risky/unreleased/no-data)
+- **`domain/system/SudoersTemplate`** (7) — geração por distro + whitelist estrita (nao permite `-R`/`-U`)
 
 **Application services (61 testes):**
 - **`GamesService`** (8) — list/get/saveLaunch/clearNotes/etc
-- **`AuthService`** (9) — bcrypt + valida&ccedil;&otilde;es de senha/usu&aacute;rio
+- **`AuthService`** (9) — bcrypt + validações de senha/usuário
 - **`BackupService`** (7) — export/validate/plan/apply
 - **`DashboardService`** (2) — stats consolidadas
-- **`CheckService`** (6) — orquestra search + ProtonDB + Store + PCGW, valida 5 recomenda&ccedil;&otilde;es
-- **`PCGWService`** (2) — passthrough (delega&ccedil;&atilde;o + force option)
+- **`CheckService`** (6) — orquestra search + ProtonDB + Store + PCGW, valida 5 recomendações
+- **`PCGWService`** (2) — passthrough (delegação + force option)
 - **`SystemService`** (7) — scan, groupStatuses (filtro por GPU), sudoersTemplate, buildInstallArgs, runSudoSequence
 - **`SteamApplyService`** (9) — describe (configured/available/steamRunning) + apply (jogo inexistente, sem override, sem creds, sucesso, steam rodando)
 - **`SyncService`** (5) — applySnapshot (upsert + snapshot record + system_info + enrichDefaults + preserva user fields)
-- **`AIService`** (6) — get/setConfig, readProtonLog, valida&ccedil;&otilde;es de pre-condi&ccedil;&atilde;o, cache hit determin&iacute;stico via SHA-256
+- **`AIService`** (6) — get/setConfig, readProtonLog, validações de pre-condição, cache hit determinístico via SHA-256
 
 ## Fluxo "Vai rodar?" (`/check`)
 
@@ -399,14 +399,14 @@ sequenceDiagram
     API->>Steam: SearchApps(query)
     Steam-->>API: appid + nome + logo
     API-->>UI: lista de resultados
-    UI-->>User: mostra hits clic&aacute;veis
+    UI-->>User: mostra hits clicáveis
 
     User->>UI: clica num resultado
     UI->>API: GET /api/check/:appid
 
     par fetches paralelos
         API->>Store: appdetails
-        Store-->>API: plataformas, pre&ccedil;o, release
+        Store-->>API: plataformas, preço, release
     and
         API->>Proton: summary(appid)
         Proton-->>API: tier + confidence + total
@@ -415,16 +415,16 @@ sequenceDiagram
         PCGW-->>API: widescreen / ultrawide / FOV
     end
 
-    Note over API: computeRecommendation()<br/>(dom&iacute;nio puro)
-    API-->>UI: CheckResult + recomenda&ccedil;&atilde;o
-    UI-->>User: badge go/caution/risky + raz&otilde;es
+    Note over API: computeRecommendation()<br/>(domínio puro)
+    API-->>UI: CheckResult + recomendação
+    UI-->>User: badge go/caution/risky + razões
 ```
 
 ## Workflow
 
 | Quando                              | Rode                                                          |
 |-------------------------------------|---------------------------------------------------------------|
-| Comprou jogo novo                   | `npm run sync` (ou bot&atilde;o "Sync" na sidebar)            |
+| Comprou jogo novo                   | `npm run sync` (ou botão "Sync" na sidebar)            |
 | Editou config de um jogo na UI      | Salva no SQLite via form                                      |
 | Quer ver overrides persistidos      | `sqlite3 data/panel.db "select appid, name, user_launch_options from games where user_launch_options is not null;"` |
 | Pensando em comprar um jogo         | `/check` busca por nome e consolida ProtonDB + PCGW + Store   |
@@ -522,12 +522,12 @@ erDiagram
     }
 ```
 
-## Licen&ccedil;a
+## Licença
 
 [GNU Affero General Public License v3.0 ou posterior](LICENSE) (AGPL-3.0-or-later).
 
-Resumo pr&aacute;tico: voc&ecirc; pode usar, modificar e redistribuir o ProtonDeck
-livremente, inclusive em servidor pr&oacute;prio. Se voc&ecirc; rodar uma vers&atilde;o
-modificada acess&iacute;vel pela rede (ex.: hospedar pra outras pessoas), precisa
-disponibilizar o c&oacute;digo-fonte das suas modifica&ccedil;&otilde;es sob a mesma
-licen&ccedil;a.
+Resumo prático: você pode usar, modificar e redistribuir o ProtonDeck
+livremente, inclusive em servidor próprio. Se você rodar uma versão
+modificada acessível pela rede (ex.: hospedar pra outras pessoas), precisa
+disponibilizar o código-fonte das suas modificações sob a mesma
+licença.
