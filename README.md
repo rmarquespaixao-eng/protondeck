@@ -205,16 +205,25 @@ Zero deps de teste. Fakes em `src/test/fakes/` implementam os outbound
 ports, ent&atilde;o services s&atilde;o testados sem mexer no SQLite ou em
 APIs externas.
 
-Atualmente cobre (59 testes):
+Atualmente cobre (94 testes em 14 arquivos):
 
-- **`domain/games/LaunchOptions`** — parser do launch string (env vars, gamescope, args, resolu&ccedil;&atilde;o forced)
-- **`domain/games/VdfParser`** — leitura/escrita do `localconfig.vdf` do Steam (com round-trip)
-- **`domain/check/Recommendation`** — todos os 5 caminhos de recomenda&ccedil;&atilde;o (go/caution/risky/unreleased/no-data)
-- **`domain/system/SudoersTemplate`** — gera&ccedil;&atilde;o por distro + whitelist estrita (nao permite `-R`/`-U`)
-- **`application/services/GamesService`** — list/get/saveLaunch/clearNotes/etc
-- **`application/services/AuthService`** — bcrypt + valida&ccedil;&otilde;es de senha/usu&aacute;rio
-- **`application/services/BackupService`** — export/validate/plan/apply
-- **`application/services/DashboardService`** — stats consolidadas
+**Domain (33 testes):**
+- **`domain/games/LaunchOptions`** (6) — parser do launch string (env vars, gamescope, args, resolu&ccedil;&atilde;o forced)
+- **`domain/games/VdfParser`** (10) — leitura/escrita do `localconfig.vdf` do Steam (com round-trip)
+- **`domain/check/Recommendation`** (10) — todos os 5 caminhos de recomenda&ccedil;&atilde;o (go/caution/risky/unreleased/no-data)
+- **`domain/system/SudoersTemplate`** (7) — gera&ccedil;&atilde;o por distro + whitelist estrita (nao permite `-R`/`-U`)
+
+**Application services (61 testes):**
+- **`GamesService`** (8) — list/get/saveLaunch/clearNotes/etc
+- **`AuthService`** (9) — bcrypt + valida&ccedil;&otilde;es de senha/usu&aacute;rio
+- **`BackupService`** (7) — export/validate/plan/apply
+- **`DashboardService`** (2) — stats consolidadas
+- **`CheckService`** (6) — orquestra search + ProtonDB + Store + PCGW, valida 5 recomenda&ccedil;&otilde;es
+- **`PCGWService`** (2) — passthrough (delega&ccedil;&atilde;o + force option)
+- **`SystemService`** (7) — scan, groupStatuses (filtro por GPU), sudoersTemplate, buildInstallArgs, runSudoSequence
+- **`SteamApplyService`** (9) — describe (configured/available/steamRunning) + apply (jogo inexistente, sem override, sem creds, sucesso, steam rodando)
+- **`SyncService`** (5) — applySnapshot (upsert + snapshot record + system_info + enrichDefaults + preserva user fields)
+- **`AIService`** (6) — get/setConfig, readProtonLog, valida&ccedil;&otilde;es de pre-condi&ccedil;&atilde;o, cache hit determin&iacute;stico via SHA-256
 
 ## Workflow
 
