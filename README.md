@@ -24,45 +24,68 @@ Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 
 ## Arquitetura
 
+Hexagonal cl&aacute;ssica (ports &amp; adapters de Cockburn) com camadas
+**domain / application / adapters**:
+
 ```
 src/
-  domain/                  # entidades + funcoes puras (zero I/O)
-    games/                 LaunchOptions, ConfigCatalog, CompatibilityRules, VdfParser
-    check/                 CheckResult, ProtonReport, Recommendation
-    pcgw/                  WidescreenInfo
-    system/                Recipes, SudoersTemplate, SystemTypes
+  domain/                          entidades + funcoes puras (zero I/O)
+    games/                         LaunchOptions, ConfigCatalog, CompatibilityRules, VdfParser
+    check/                         CheckResult, ProtonReport, Recommendation
+    pcgw/                          WidescreenInfo
+    system/                        Recipes, SudoersTemplate, SystemTypes
 
-  ports/                   # interfaces dos adapters externos (TS interfaces)
-    GameRepository, UserRepository, AIConfigRepository, SteamConfigRepository,
-    CacheRepository, SnapshotRepository, SystemInfoRepository,
-    PCGWClient, CheckClients, ProtonDBCommunityClient, SteamLocalConfigClient,
-    ProtonLogReader, SystemDetector, SystemRunner
-
-  app/                     # use cases — orquestram domain + ports
-    games/GamesService, dashboard/DashboardService, check/CheckService,
-    pcgw/PCGWService, system/SystemService, backup/BackupService,
-    auth/AuthService, steam-apply/SteamApplyService, sync/SyncService,
-    ai/AIService
+  application/                     a "hexagon" — orquestra o dominio
+    ports/
+      in/                          inbound (primary/driving) ports — interfaces
+                                   dos use cases que o mundo externo chama:
+                                   GamesUseCase, DashboardUseCase, CheckUseCase,
+                                   PCGWUseCase, SystemUseCase, BackupUseCase,
+                                   AuthUseCase, SteamApplyUseCase, SyncUseCase, AIUseCase
+      out/                         outbound (secondary/driven) ports —
+                                   interfaces que a application REQUER:
+                                   GameRepository, UserRepository,
+                                   AIConfigRepository, SteamConfigRepository,
+                                   CacheRepository, SnapshotRepository,
+                                   SystemInfoRepository, PCGWClient,
+                                   CheckClients, ProtonDBCommunityClient,
+                                   SteamLocalConfigClient, ProtonLogReader,
+                                   SystemDetector, SystemRunner
+    services/                      implementacoes dos inbound ports
+                                   (GamesService implements GamesUseCase, etc)
 
   adapters/
-    primary/               # driving (recebem comandos do mundo)
-      http/                Fastify Server.ts + routes/ + views/ + public/
-    secondary/             # driven (chamados pelos use cases)
-      sqlite/              connection.ts + 1 repo por dominio
-      http-clients/        PCGWMediaWiki, ProtonDB (summary + community), SteamSearch, SteamStore
-      ai/                  AIProvider (multi-provider Anthropic/OpenAI/Ollama) + Prompts + Tools
-      fs/                  SteamLocalConfigFs, ProtonLogFs
-      system/              LinuxSystemDetector, SudoSystemRunner
-      shared/              fetch helper
+    in/                            inbound adapters — driving
+                                   (chamam os ports/in/)
+      http/                        Fastify Server.ts + routes/ + views/ + public/
+      cli/                         sync.command.ts
+    out/                           outbound adapters — driven
+                                   (implementam os ports/out/)
+      persistence/sqlite/          connection.ts + 1 repo por dominio
+      http-clients/                PCGWMediaWiki, ProtonDB (summary + community),
+                                   SteamSearch, SteamStore
+      ai/                          AIProvider (Anthropic/OpenAI/Ollama) + Prompts + Tools
+      fs/                          SteamLocalConfigFs, ProtonLogFs
+      system/                      LinuxSystemDetector, SudoSystemRunner
+      shared/                      fetch helper
 
-  composition.ts           # monta o grafo de deps
-  main.ts                  # entry point HTTP
-  cli/sync.command.ts      # CLI: npm run sync
+  composition.ts                   monta o grafo de deps (composition root)
+  main.ts                          entry point HTTP
 ```
 
-A regra-chave: **domain &amp; app n&atilde;o importam de adapters**. Toda
-depend&ecirc;ncia externa entra via `ports/`. Trocar SQLite por Postgres,
-ou Anthropic por OpenAI, mexe s&oacute; em uma camada.
+Regras de depend&ecirc;ncia:
+
+- **`domain/`** n&atilde;o importa de ningu&eacute;m.
+- **`application/`** importa s&oacute; de `domain/` e dos pr&oacute;prios
+  `application/ports/`.
+- **`adapters/in/`** chama `application/ports/in/` (use cases).
+- **`adapters/out/`** implementa `application/ports/out/`.
+- **`composition.ts`** é o &uacute;nico arquivo que instancia adapters
+  concretos e injeta no grafo.
+
+Trocar SQLite por Postgres mexe s&oacute; em `adapters/out/persistence/`.
+Trocar Anthropic por Bedrock mexe s&oacute; em `adapters/out/ai/`. Adicionar
+uma CLI nova mexe s&oacute; em `adapters/in/cli/`.
 
 ## Setup (desenvolvimento)
 

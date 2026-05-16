@@ -1,5 +1,5 @@
 import { buildComposition } from './composition.js';
-import { buildServer } from './adapters/primary/http/Server.js';
+import { buildServer } from './adapters/in/http/Server.js';
 
 try { process.loadEnvFile(); } catch { /* .env opcional */ }
 

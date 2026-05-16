@@ -1,37 +1,37 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
-import { openDatabase, runMigrations, type DB } from './adapters/secondary/sqlite/connection.js';
-import { GameRepositorySqlite } from './adapters/secondary/sqlite/GameRepositorySqlite.js';
-import { UserRepositorySqlite } from './adapters/secondary/sqlite/UserRepositorySqlite.js';
-import { AIConfigRepositorySqlite, AICacheRepositorySqlite } from './adapters/secondary/sqlite/AIRepositoriesSqlite.js';
-import { SteamConfigRepositorySqlite } from './adapters/secondary/sqlite/SteamConfigRepositorySqlite.js';
-import { PCGWCacheRepositorySqlite, ExternalCacheRepositorySqlite } from './adapters/secondary/sqlite/CacheRepositoriesSqlite.js';
-import { SnapshotRepositorySqlite } from './adapters/secondary/sqlite/SnapshotRepositorySqlite.js';
-import { SystemInfoRepositorySqlite } from './adapters/secondary/sqlite/SystemInfoRepositorySqlite.js';
+import { openDatabase, runMigrations, type DB } from './adapters/out/persistence/sqlite/connection.js';
+import { GameRepositorySqlite } from './adapters/out/persistence/sqlite/GameRepositorySqlite.js';
+import { UserRepositorySqlite } from './adapters/out/persistence/sqlite/UserRepositorySqlite.js';
+import { AIConfigRepositorySqlite, AICacheRepositorySqlite } from './adapters/out/persistence/sqlite/AIRepositoriesSqlite.js';
+import { SteamConfigRepositorySqlite } from './adapters/out/persistence/sqlite/SteamConfigRepositorySqlite.js';
+import { PCGWCacheRepositorySqlite, ExternalCacheRepositorySqlite } from './adapters/out/persistence/sqlite/CacheRepositoriesSqlite.js';
+import { SnapshotRepositorySqlite } from './adapters/out/persistence/sqlite/SnapshotRepositorySqlite.js';
+import { SystemInfoRepositorySqlite } from './adapters/out/persistence/sqlite/SystemInfoRepositorySqlite.js';
 
-import { LinuxSystemDetector } from './adapters/secondary/system/LinuxSystemDetector.js';
-import { SudoSystemRunner } from './adapters/secondary/system/SudoSystemRunner.js';
+import { LinuxSystemDetector } from './adapters/out/system/LinuxSystemDetector.js';
+import { SudoSystemRunner } from './adapters/out/system/SudoSystemRunner.js';
 
-import { PCGWMediaWikiClient } from './adapters/secondary/http-clients/PCGWMediaWikiClient.js';
-import { SteamSearchHttpClient } from './adapters/secondary/http-clients/SteamSearchHttpClient.js';
-import { ProtonDBHttpClient } from './adapters/secondary/http-clients/ProtonDBHttpClient.js';
-import { SteamStoreHttpClient } from './adapters/secondary/http-clients/SteamStoreHttpClient.js';
-import { ProtonDBCommunityHttpClient } from './adapters/secondary/http-clients/ProtonDBCommunityHttpClient.js';
+import { PCGWMediaWikiClient } from './adapters/out/http-clients/PCGWMediaWikiClient.js';
+import { SteamSearchHttpClient } from './adapters/out/http-clients/SteamSearchHttpClient.js';
+import { ProtonDBHttpClient } from './adapters/out/http-clients/ProtonDBHttpClient.js';
+import { SteamStoreHttpClient } from './adapters/out/http-clients/SteamStoreHttpClient.js';
+import { ProtonDBCommunityHttpClient } from './adapters/out/http-clients/ProtonDBCommunityHttpClient.js';
 
-import { SteamLocalConfigFs } from './adapters/secondary/fs/SteamLocalConfigFs.js';
-import { ProtonLogFs } from './adapters/secondary/fs/ProtonLogFs.js';
+import { SteamLocalConfigFs } from './adapters/out/fs/SteamLocalConfigFs.js';
+import { ProtonLogFs } from './adapters/out/fs/ProtonLogFs.js';
 
-import { GamesService } from './app/games/GamesService.js';
-import { DashboardService } from './app/dashboard/DashboardService.js';
-import { CheckService } from './app/check/CheckService.js';
-import { PCGWService } from './app/pcgw/PCGWService.js';
-import { SystemService } from './app/system/SystemService.js';
-import { BackupService } from './app/backup/BackupService.js';
-import { AuthService } from './app/auth/AuthService.js';
-import { SteamApplyService } from './app/steam-apply/SteamApplyService.js';
-import { SyncService } from './app/sync/SyncService.js';
-import { AIService } from './app/ai/AIService.js';
+import { GamesService } from './application/services/GamesService.js';
+import { DashboardService } from './application/services/DashboardService.js';
+import { CheckService } from './application/services/CheckService.js';
+import { PCGWService } from './application/services/PCGWService.js';
+import { SystemService } from './application/services/SystemService.js';
+import { BackupService } from './application/services/BackupService.js';
+import { AuthService } from './application/services/AuthService.js';
+import { SteamApplyService } from './application/services/SteamApplyService.js';
+import { SyncService } from './application/services/SyncService.js';
+import { AIService } from './application/services/AIService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

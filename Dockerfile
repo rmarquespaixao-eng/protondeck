@@ -16,8 +16,8 @@ COPY src ./src
 RUN npx tsc
 
 # tsc nao copia .ejs e static — copiamos manualmente pra dist/
-RUN cp -r src/adapters/primary/http/views  dist/adapters/primary/http/ && \
-    cp -r src/adapters/primary/http/public dist/adapters/primary/http/
+RUN cp -r src/adapters/in/http/views  dist/adapters/in/http/ && \
+    cp -r src/adapters/in/http/public dist/adapters/in/http/
 
 # ───── Stage 2: runtime ─────
 FROM node:22-alpine AS runtime
