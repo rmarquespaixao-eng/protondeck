@@ -33,6 +33,26 @@ if [ "$NODE_MAJOR" -lt 20 ]; then
 fi
 command -v systemctl >/dev/null || warn "systemd nao detectado — pulando criacao do service"
 
+# Validacao: este script precisa estar dentro do tarball extraido (dist/ + run.sh + package.json).
+# Se rodaram direto do repo (`./scripts/install.sh`), os arquivos faltam — abort com instrucao.
+if [ ! -d "$SCRIPT_DIR/dist" ] || [ ! -f "$SCRIPT_DIR/run.sh" ] || [ ! -f "$SCRIPT_DIR/package.json" ]; then
+  err "
+$SCRIPT_DIR nao parece o tarball extraido (faltam dist/, run.sh ou package.json).
+
+Voce esta rodando do repo? Pra instalar:
+
+  1. Gere o tarball:
+       npm run release
+  2. Extraia e rode dele:
+       tar xzf dist-release/protondeck-*.tar.gz -C /tmp
+       cd /tmp/protondeck-*
+       ./install.sh
+
+Pra desenvolvimento local sem instalar (usa tsx, sem build):
+       npm run dev
+"
+fi
+
 # Confirma destino se nao for default
 if [ "$INSTALL_DIR" != "$HOME/.local/share/protondeck" ]; then
   echo "Destino customizado: $INSTALL_DIR"
