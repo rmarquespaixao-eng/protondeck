@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Dashboard self-hosted de configs Proton da biblioteca Steam (monolito Fastify+TS+SQLite).",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "start": "tsx src/server.ts",
-    "sync": "tsx src/sync.ts",
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "sync": "tsx src/cli/sync.command.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },

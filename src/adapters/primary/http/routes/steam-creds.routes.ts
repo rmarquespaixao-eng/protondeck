@@ -1,0 +1,28 @@
+import type { FastifyInstance } from 'fastify';
+import type { SteamConfigRepository } from '../../../../ports/SteamConfigRepository.js';
+
+type Deps = { steamConfig: SteamConfigRepository };
+
+type SteamSettingsBody = {
+  steam_api_key?: string;
+  steam_id64?: string;
+};
+
+export function steamCredsRoutes(deps: Deps) {
+  return async function (fastify: FastifyInstance) {
+    fastify.get('/settings/steam', async (req, reply) => {
+      const cfg = deps.steamConfig.get();
+      return reply.view('steam-settings.ejs', { cfg, currentUser: req.currentUser });
+    });
+
+    fastify.post<{ Body: SteamSettingsBody }>('/settings/steam', async (req, reply) => {
+      const key = (req.body.steam_api_key ?? '').trim();
+      const id  = (req.body.steam_id64 ?? '').trim();
+      if (!key || !id) return reply.code(400).send('api_key e steam_id64 obrigatórios');
+      if (!/^[A-Fa-f0-9]{32}$/.test(key)) return reply.code(400).send('api_key inválida (precisa de 32 hex chars)');
+      if (!/^7656119\d{10}$/.test(id))    return reply.code(400).send('steam_id64 inválido');
+      deps.steamConfig.set({ api_key: key, steam_id64: id });
+      return reply.redirect('/settings/steam');
+    });
+  };
+}
