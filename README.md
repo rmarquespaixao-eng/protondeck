@@ -16,7 +16,7 @@ Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 | **Biblioteca**                | `/games`     | tabela filtravel da Steam library: tier, engine detectada, Proton version, override pessoal. |
 | **Editor de launch options**  | `/game/:appid` | builder visual com checkboxes pra gamescope, env vars (DXVK/VKD3D/Proton/NVIDIA), args, presets por engine, preview ao vivo, diagnostico de conflitos, assistente IA. |
 | **PCGamingWiki widescreen**   | (dentro do `/game/:appid`) | suporte a widescreen 16:9 / ultra-widescreen 21:9 / multi-monitor / 4K / FOV, com notas extraidas da wiki. |
-| **"Vai rodar?"**              | `/check`     | busca jogo na Steam por nome (mesmo que nao esteja na biblioteca) e cruza ProtonDB + PCGW + Steam Store; retorna recomendacao em 5 niveis (go / caution / risky / unreleased / no-data). |
+| **"Vai rodar?"**              | `/check`     | busca jogo na Steam por nome (mesmo que nao esteja na biblioteca) e cruza ProtonDB + PCGW + Steam Store; retorna recomendacao em 5 niveis (go / caution / risky / unreleased / no-data). [diagrama de fluxo abaixo](#fluxo-vai-rodar-check) |
 | **Wizard de pacotes**         | `/system`    | detecta distro (Arch/CachyOS, Ubuntu/Debian, Fedora) + GPU e instala em tempo real via SSE o stack Proton (gamescope, mangohud, gamemode, Vulkan, Steam, protontricks). |
 | **Backup &amp; Import**       | `/backup`    | exporta seus overrides em JSON; importa com preview antes de aplicar.                       |
 | **Aplicar direto no Steam**   | botao em `/game/:appid` | edita `~/.steam/steam/userdata/&lt;id&gt;/config/localconfig.vdf` com backup automatico e barreira se o cliente Steam estiver rodando. |
@@ -25,7 +25,43 @@ Arquitetura hexagonal — domain puro / ports / use cases / adapters separados.
 ## Arquitetura
 
 Hexagonal cl&aacute;ssica (ports &amp; adapters de Cockburn) com camadas
-**domain / application / adapters**:
+**domain / application / adapters**.
+
+```mermaid
+flowchart LR
+    subgraph in["adapters/in (driving)"]
+        HTTP["HTTP / Fastify<br/>routes + views"]
+        CLI["CLI<br/>sync.command"]
+    end
+
+    subgraph app["application"]
+        direction TB
+        PIN["ports/in<br/>UseCase interfaces"]
+        SVC["services<br/>Games / Dashboard / Check<br/>PCGW / System / Backup<br/>Auth / SteamApply / Sync / AI"]
+        POUT["ports/out<br/>Repository &amp; Client interfaces"]
+        PIN -. implements .- SVC
+        SVC --> POUT
+    end
+
+    DOM["domain<br/>(funções puras, zero I/O)<br/>LaunchOptions · VdfParser<br/>ConfigCatalog · CompatibilityRules<br/>Recommendation · WidescreenInfo<br/>Recipes · SudoersTemplate"]
+
+    subgraph out["adapters/out (driven)"]
+        SQLITE["SQLite repos<br/>1 por dom&iacute;nio"]
+        HTTPC["HTTP clients<br/>PCGW · ProtonDB · Steam"]
+        AI["AI providers<br/>Anthropic · OpenAI · Ollama"]
+        FS["Filesystem<br/>localconfig.vdf · proton-log"]
+        SYS["System<br/>detect · sudo runner"]
+    end
+
+    HTTP --> PIN
+    CLI --> PIN
+    SVC --> DOM
+    POUT -. implements .- SQLITE
+    POUT -. implements .- HTTPC
+    POUT -. implements .- AI
+    POUT -. implements .- FS
+    POUT -. implements .- SYS
+```
 
 ```
 src/
@@ -225,6 +261,44 @@ Atualmente cobre (94 testes em 14 arquivos):
 - **`SyncService`** (5) — applySnapshot (upsert + snapshot record + system_info + enrichDefaults + preserva user fields)
 - **`AIService`** (6) — get/setConfig, readProtonLog, valida&ccedil;&otilde;es de pre-condi&ccedil;&atilde;o, cache hit determin&iacute;stico via SHA-256
 
+## Fluxo "Vai rodar?" (`/check`)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Browser /check
+    participant API as ProtonDeck API
+    participant Steam as Steam Search
+    participant Store as Steam Store
+    participant Proton as ProtonDB
+    participant PCGW as PCGamingWiki
+
+    User->>UI: busca "resident evil 4"
+    UI->>API: GET /api/check/search?q=...
+    API->>Steam: SearchApps(query)
+    Steam-->>API: appid + nome + logo
+    API-->>UI: lista de resultados
+    UI-->>User: mostra hits clic&aacute;veis
+
+    User->>UI: clica num resultado
+    UI->>API: GET /api/check/:appid
+
+    par fetches paralelos
+        API->>Store: appdetails
+        Store-->>API: plataformas, pre&ccedil;o, release
+    and
+        API->>Proton: summary(appid)
+        Proton-->>API: tier + confidence + total
+    and
+        API->>PCGW: parse Video infobox
+        PCGW-->>API: widescreen / ultrawide / FOV
+    end
+
+    Note over API: computeRecommendation()<br/>(dom&iacute;nio puro)
+    API-->>UI: CheckResult + recomenda&ccedil;&atilde;o
+    UI-->>User: badge go/caution/risky + raz&otilde;es
+```
+
 ## Workflow
 
 | Quando                              | Rode                                                          |
@@ -248,3 +322,81 @@ Atualmente cobre (94 testes em 14 arquivos):
 - `steam_config` — credenciais Steam (`api_key` + `steam_id64`).
 - `pcgw_cache` — cache de paginas do PCGamingWiki (7d hits / 1d falhas).
 - `external_cache` — cache generico (ProtonDB, Steam Store, Steam Search).
+
+Schema flat — sem foreign keys entre tabelas. `games` agrega tudo que importa
+por jogo; o resto e' singleton ou cache:
+
+```mermaid
+erDiagram
+    games {
+        text appid PK
+        text name
+        int installed
+        text install_path
+        int playtime_minutes
+        text last_played
+        text tier
+        text trending_tier
+        text confidence
+        int reports
+        text engine
+        text engine_source
+        text proton
+        text launch_options
+        text config_source
+        text notes_json
+        text user_launch_options
+        text user_notes
+        text updated_at
+    }
+    snapshots {
+        int id PK
+        text generated_at
+        text steam_id64
+        int game_count
+        text raw_json
+    }
+    system_info {
+        int id PK
+        text detected_at
+        text payload_json
+    }
+    users {
+        int id PK
+        text username UK
+        text password_hash
+        text created_at
+    }
+    ai_config {
+        int id PK
+        text provider
+        text model
+        text api_key
+        text base_url
+        text updated_at
+    }
+    ai_cache {
+        text cache_key PK
+        text payload
+        text created_at
+    }
+    steam_config {
+        int id PK
+        text api_key
+        text steam_id64
+        text updated_at
+    }
+    pcgw_cache {
+        text appid PK
+        text payload
+        text fetched_at
+        int status
+    }
+    external_cache {
+        text scope PK
+        text cache_key PK
+        text payload
+        text fetched_at
+        int status
+    }
+```
