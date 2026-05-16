@@ -1,14 +1,26 @@
 import type { FastifyInstance } from 'fastify';
-import { listGames, getStats, getSystemInfo } from '../db.js';
+import { listGames, getStats, getSystemInfo, getDashboardData, getSteamConfig } from '../db.js';
 
-type IndexQuery = {
+type GamesQuery = {
   tier?: string;
   search?: string;
   installed?: string;
 };
 
 export async function indexRoutes(fastify: FastifyInstance) {
-  fastify.get<{ Querystring: IndexQuery }>('/', async (req, reply) => {
+  fastify.get('/', async (req, reply) => {
+    const dash = getDashboardData();
+    const system = getSystemInfo() as { gpu?: { model?: string }; monitors?: { name: string; width: number; height: number; refresh: number }[]; session?: { type: string; desktop: string } } | null;
+    const steamConfigured = !!getSteamConfig();
+    return reply.view('dashboard.ejs', {
+      dash,
+      system,
+      steamConfigured,
+      currentUser: req.currentUser,
+    });
+  });
+
+  fastify.get<{ Querystring: GamesQuery }>('/games', async (req, reply) => {
     const { tier, search, installed } = req.query;
     const games = listGames({
       tier,
@@ -17,7 +29,7 @@ export async function indexRoutes(fastify: FastifyInstance) {
     });
     const stats = getStats();
     const system = getSystemInfo() as { gpu?: { model?: string }; monitors?: { name: string; width: number; height: number; refresh: number }[]; session?: { type: string; desktop: string } } | null;
-    return reply.view('index.ejs', {
+    return reply.view('games.ejs', {
       games,
       stats,
       system,

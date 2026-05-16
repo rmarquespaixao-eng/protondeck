@@ -14,8 +14,13 @@
         <span class="sidebar-brand-mini">Proton launch options</span>
       </a>
 
+      <div class="sidebar-section-label">Início</div>
+      <a href="/" class="sidebar-link <%= active === 'home' ? 'active' : '' %>">
+        <span class="icon">◉</span> Dashboard
+      </a>
+
       <div class="sidebar-section-label">Biblioteca</div>
-      <a href="/" class="sidebar-link <%= active === 'library' ? 'active' : '' %>">
+      <a href="/games" class="sidebar-link <%= active === 'library' ? 'active' : '' %>">
         <span class="icon">▣</span> Jogos
       </a>
       <a href="/check" class="sidebar-link <%= active === 'check' ? 'active' : '' %>">

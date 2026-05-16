@@ -1,4 +1,4 @@
-<%- include('partials/shell-top.ejs', { title: 'Biblioteca', active: 'library' }) %>
+<%- include('partials/shell-top.ejs', { title: 'Biblioteca', active: 'library', currentUser: currentUser }) %>
 
 <div class="page-header">
   <h1>Biblioteca</h1>
@@ -26,7 +26,7 @@
 </details>
 <% } %>
 
-<form class="filters" method="get" action="/">
+<form class="filters" method="get" action="/games">
   <input type="search" name="search" value="<%= filters.search %>" placeholder="nome ou appid" />
   <select name="tier">
     <option value="">tier (todos)</option>
@@ -40,7 +40,7 @@
     <option value="0" <%= filters.installed === '0' ? 'selected' : '' %>>não</option>
   </select>
   <button type="submit">filtrar</button>
-  <a class="clear" href="/">limpar</a>
+  <a class="clear" href="/games">limpar</a>
 </form>
 
 <div class="table-wrap">

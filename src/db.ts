@@ -385,6 +385,48 @@ export function getStats(): { total: number; byTier: Record<string, number>; ins
   return { total, byTier, installed, lastSync: last?.generated_at ?? null };
 }
 
+export type DashboardData = {
+  total: number;
+  installed: number;
+  byTier: Record<string, number>;
+  overridesCount: number;
+  totalPlaytimeHours: number;
+  lastSync: string | null;
+  recentlyPlayed: { appid: string; name: string; tier: string; playtime_minutes: number; last_played: string | null }[];
+  recentlyOverridden: { appid: string; name: string; updated_at: string; user_launch_options: string | null }[];
+};
+
+export function getDashboardData(): DashboardData {
+  const base = getStats();
+  const overridesCount = (db.prepare(`
+    SELECT COUNT(*) AS n FROM games
+    WHERE user_launch_options IS NOT NULL OR user_notes IS NOT NULL
+  `).get() as { n: number }).n;
+  const playtimeSum = (db.prepare('SELECT COALESCE(SUM(playtime_minutes), 0) AS s FROM games').get() as { s: number }).s;
+  const recentlyPlayed = db.prepare(`
+    SELECT appid, name, tier, playtime_minutes, last_played FROM games
+    WHERE last_played IS NOT NULL AND last_played != ''
+    ORDER BY last_played DESC
+    LIMIT 6
+  `).all() as DashboardData['recentlyPlayed'];
+  const recentlyOverridden = db.prepare(`
+    SELECT appid, name, updated_at, user_launch_options FROM games
+    WHERE user_launch_options IS NOT NULL OR user_notes IS NOT NULL
+    ORDER BY updated_at DESC
+    LIMIT 6
+  `).all() as DashboardData['recentlyOverridden'];
+  return {
+    total: base.total,
+    installed: base.installed,
+    byTier: base.byTier,
+    overridesCount,
+    totalPlaytimeHours: Math.round(playtimeSum / 6) / 10,
+    lastSync: base.lastSync,
+    recentlyPlayed,
+    recentlyOverridden,
+  };
+}
+
 export function getSystemInfo(): unknown | null {
   const row = db.prepare('SELECT payload_json FROM system_info WHERE id = 1').get() as { payload_json: string } | undefined;
   return row ? JSON.parse(row.payload_json) : null;
