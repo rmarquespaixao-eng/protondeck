@@ -14,12 +14,22 @@ import { steamRoutes } from './routes/steam.js';
 import { authRoutes } from './routes/auth.js';
 import { countUsers } from './db.js';
 
+// Carrega .env do cwd automaticamente (Node >=20.12). Silencia se nao existe.
+try { process.loadEnvFile(); } catch { /* .env opcional */ }
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const sessionKeyHex = process.env.SESSION_KEY;
 if (!sessionKeyHex || !/^[0-9a-fA-F]{64}$/.test(sessionKeyHex)) {
-  console.error('SESSION_KEY env var é obrigatória (64 hex chars = 32 bytes).');
-  console.error('Gere com: openssl rand -hex 32');
+  console.error('SESSION_KEY não está configurada ou é inválida (precisa de 64 hex chars = 32 bytes).');
+  console.error('');
+  console.error('  Setup rápido:');
+  console.error('    cp .env.example .env');
+  console.error('    echo "SESSION_KEY=$(openssl rand -hex 32)" >> .env');
+  console.error('    npm run dev');
+  console.error('');
+  console.error('  Ou ad-hoc:');
+  console.error('    SESSION_KEY=$(openssl rand -hex 32) npm run dev');
   process.exit(1);
 }
 const sessionKey = Buffer.from(sessionKeyHex, 'hex');

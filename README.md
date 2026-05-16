@@ -26,11 +26,14 @@ Stack: Fastify 5 + TypeScript + better-sqlite3 + EJS (server-rendered, sem SPA).
 ```bash
 npm install
 cp .env.example .env
-# Gere a chave de sessao (32 bytes hex) e cole em SESSION_KEY no .env:
-openssl rand -hex 32
+# Gera a chave de sessao (32 bytes hex) e adiciona no .env:
+echo "SESSION_KEY=$(openssl rand -hex 32)" >> .env
 npm run sync     # popula data/panel.db com o snapshot inicial (chama steam-launch)
 npm run dev      # http://localhost:3030
 ```
+
+O `.env` é carregado automaticamente via `process.loadEnvFile()` (Node ≥20.12).
+Tambem da pra exportar `SESSION_KEY` direto no shell em vez de usar `.env`.
 
 No primeiro acesso, o painel redireciona pra `/setup` pra criar a conta admin
 (user/senha persistidos no SQLite com bcrypt). Single-user: nao tem cadastro
