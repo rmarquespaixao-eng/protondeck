@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title><%= title %> · ProtonDeck</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="sidebar-brand" href="/">
+        ProtonDeck
+        <span class="sidebar-brand-mini">Proton launch options</span>
+      </a>
+
+      <div class="sidebar-section-label">Início</div>
+      <a href="/" class="sidebar-link <%= active === 'home' ? 'active' : '' %>">
+        <span class="icon">◉</span> Dashboard
+      </a>
+
+      <div class="sidebar-section-label">Biblioteca</div>
+      <a href="/games" class="sidebar-link <%= active === 'library' ? 'active' : '' %>">
+        <span class="icon">▣</span> Jogos
+      </a>
+      <a href="/check" class="sidebar-link <%= active === 'check' ? 'active' : '' %>">
+        <span class="icon">⌕</span> Vai rodar?
+      </a>
+
+      <div class="sidebar-section-label">Configurações</div>
+      <a href="/settings/steam" class="sidebar-link <%= active === 'steam' ? 'active' : '' %>">
+        <span class="icon">⊙</span> Steam Credentials
+      </a>
+      <a href="/settings/ai" class="sidebar-link <%= active === 'ai' ? 'active' : '' %>">
+        <span class="icon">✦</span> AI Provider
+      </a>
+
+      <div class="sidebar-section-label">Sistema</div>
+      <a href="/system" class="sidebar-link <%= active === 'system' ? 'active' : '' %>">
+        <span class="icon">⎈</span> Wizard de pacotes
+      </a>
+      <a href="/backup" class="sidebar-link <%= active === 'backup' ? 'active' : '' %>">
+        <span class="icon">⇅</span> Backup &amp; Import
+      </a>
+
+      <div class="sidebar-footer">
+        <form method="post" action="/sync">
+          <button type="submit" class="sidebar-sync" title="Re-roda steam-launch dashboard:snapshot">↻ Sync biblioteca</button>
+        </form>
+        <% if (typeof currentUser !== 'undefined' && currentUser) { %>
+          <div class="sidebar-user">
+            <span class="sidebar-user-name" title="Logado como <%= currentUser.username %>"><%= currentUser.username %></span>
+            <form method="post" action="/logout" class="sidebar-logout-form">
+              <button type="submit" class="sidebar-logout" title="Sair">Sair</button>
+            </form>
+          </div>
+        <% } %>
+        <div class="sidebar-version">v0.2</div>
+      </div>
+    </aside>
+    <main class="main-content">

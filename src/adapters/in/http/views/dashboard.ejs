@@ -1,0 +1,170 @@
+<%- include('partials/shell-top.ejs', { title: 'Dashboard', active: 'home', currentUser: currentUser }) %>
+
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <span class="page-sub">Resumo da biblioteca, do sistema e atalhos pros fluxos principais.</span>
+</div>
+
+<% if (!dash.lastSync) { %>
+<div class="banner banner-warn">
+  Banco ainda vazio. <% if (!steamConfigured) { %><a href="/settings/steam">Configure as credenciais Steam</a> e<% } %> rode o primeiro sync no botão da sidebar.
+</div>
+<% } %>
+
+<!-- ──── Stats row ──── -->
+<section class="dash-stats">
+  <div class="dash-stat-card">
+    <div class="dash-stat-num"><%= dash.total %></div>
+    <div class="dash-stat-label">jogos na biblioteca</div>
+  </div>
+  <div class="dash-stat-card">
+    <div class="dash-stat-num"><%= dash.installed %></div>
+    <div class="dash-stat-label">instalados</div>
+  </div>
+  <div class="dash-stat-card">
+    <div class="dash-stat-num"><%= dash.overridesCount %></div>
+    <div class="dash-stat-label">com override custom</div>
+  </div>
+  <div class="dash-stat-card">
+    <div class="dash-stat-num"><%= dash.totalPlaytimeHours %><span class="dash-stat-unit">h</span></div>
+    <div class="dash-stat-label">tempo total jogado</div>
+  </div>
+</section>
+
+<!-- ──── Tier breakdown ──── -->
+<% if (dash.total > 0) { %>
+<section class="dash-card">
+  <div class="dash-card-head">
+    <h2 class="dash-card-title">Distribuição por tier</h2>
+    <a href="/games" class="dash-card-link">ver biblioteca →</a>
+  </div>
+  <div class="dash-tier-bars">
+    <% ['platinum','gold','silver','bronze','pending','borked','native','unknown'].forEach(function(t) {
+         var n = dash.byTier[t] || 0;
+         if (n === 0) return;
+         var pct = Math.max(2, Math.round((n / dash.total) * 100));
+    %>
+      <a class="dash-tier-bar" href="/games?tier=<%= t %>" title="<%= t %>: <%= n %> jogos">
+        <span class="dash-tier-label tier-<%= t %>"><%= t %></span>
+        <span class="dash-tier-fill-wrap">
+          <span class="dash-tier-fill tier-<%= t %>-bg" style="width: <%= pct %>%"></span>
+        </span>
+        <span class="dash-tier-num"><%= n %></span>
+      </a>
+    <% }); %>
+  </div>
+</section>
+<% } %>
+
+<!-- ──── Quick actions ──── -->
+<section class="dash-card">
+  <div class="dash-card-head">
+    <h2 class="dash-card-title">Atalhos</h2>
+  </div>
+  <div class="dash-actions">
+    <a class="dash-action" href="/check">
+      <span class="dash-action-icon">⌕</span>
+      <div>
+        <div class="dash-action-title">Vai rodar no Linux?</div>
+        <div class="dash-action-desc">Antes de comprar, consulta ProtonDB + PCGW + Store</div>
+      </div>
+    </a>
+    <a class="dash-action" href="/system">
+      <span class="dash-action-icon">⎈</span>
+      <div>
+        <div class="dash-action-title">Wizard de pacotes</div>
+        <div class="dash-action-desc">Instala gamescope, mangohud, Vulkan, Steam pra sua distro</div>
+      </div>
+    </a>
+    <a class="dash-action" href="/backup">
+      <span class="dash-action-icon">⇅</span>
+      <div>
+        <div class="dash-action-title">Backup & Import</div>
+        <div class="dash-action-desc">Exporta seus overrides ou importa de outra máquina</div>
+      </div>
+    </a>
+    <form method="post" action="/sync" class="dash-action-form">
+      <button type="submit" class="dash-action dash-action-btn">
+        <span class="dash-action-icon">↻</span>
+        <div>
+          <div class="dash-action-title">Sync biblioteca</div>
+          <div class="dash-action-desc">Re-roda steam-launch e atualiza o snapshot</div>
+        </div>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ──── Sistema + recentes ──── -->
+<div class="dash-grid-2col">
+
+  <!-- Sistema detectado -->
+  <% if (system) { %>
+  <section class="dash-card">
+    <div class="dash-card-head">
+      <h2 class="dash-card-title">Sistema</h2>
+      <a href="/system" class="dash-card-link">wizard →</a>
+    </div>
+    <dl class="dash-kv">
+      <% if (system.gpu && system.gpu.model) { %>
+        <dt>GPU</dt><dd><%= system.gpu.model %></dd>
+      <% } %>
+      <% if (system.session) { %>
+        <dt>Sessão</dt><dd><%= system.session.type %> / <%= system.session.desktop %></dd>
+      <% } %>
+      <% if (system.monitors && system.monitors.length) {
+           var m = system.monitors[0];
+      %>
+        <dt>Monitor</dt><dd><%= m.name %> · <%= m.width %>×<%= m.height %>@<%= m.refresh %>Hz</dd>
+      <% } %>
+      <% if (dash.lastSync) { %>
+        <dt>Último sync</dt><dd><%= dash.lastSync.slice(0,16).replace('T',' ') %></dd>
+      <% } %>
+    </dl>
+  </section>
+  <% } %>
+
+  <!-- Últimos jogados -->
+  <% if (dash.recentlyPlayed.length) { %>
+  <section class="dash-card">
+    <div class="dash-card-head">
+      <h2 class="dash-card-title">Últimos jogados</h2>
+    </div>
+    <ul class="dash-list">
+      <% dash.recentlyPlayed.forEach(function(g) { %>
+        <li>
+          <a href="/game/<%= g.appid %>" class="dash-list-name"><%= g.name %></a>
+          <span class="badge tier-<%= g.tier %>"><%= g.tier %></span>
+          <span class="dash-list-meta"><%= Math.round((g.playtime_minutes || 0) / 6) / 10 %>h</span>
+        </li>
+      <% }); %>
+    </ul>
+  </section>
+  <% } %>
+
+</div>
+
+<!-- ──── Overrides recentes ──── -->
+<% if (dash.recentlyOverridden.length) { %>
+<section class="dash-card">
+  <div class="dash-card-head">
+    <h2 class="dash-card-title">Overrides recentes</h2>
+    <a href="/backup" class="dash-card-link">exportar tudo →</a>
+  </div>
+  <ul class="dash-overrides">
+    <% dash.recentlyOverridden.forEach(function(g) { %>
+      <li>
+        <div class="dash-override-head">
+          <a href="/game/<%= g.appid %>" class="dash-list-name"><%= g.name %></a>
+          <span class="dash-list-meta"><%= g.updated_at.slice(0,16).replace('T',' ') %></span>
+        </div>
+        <% if (g.user_launch_options) { %>
+          <code class="dash-override-snippet"><%= g.user_launch_options.length > 140 ? g.user_launch_options.slice(0, 140) + '…' : g.user_launch_options %></code>
+        <% } %>
+      </li>
+    <% }); %>
+  </ul>
+</section>
+<% } %>
+
+<%- include('partials/shell-bot.ejs') %>
