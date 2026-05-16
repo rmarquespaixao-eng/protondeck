@@ -21,6 +21,9 @@ import { ProtonDBCommunityHttpClient } from './adapters/out/http-clients/ProtonD
 
 import { SteamLocalConfigFs } from './adapters/out/fs/SteamLocalConfigFs.js';
 import { ProtonLogFs } from './adapters/out/fs/ProtonLogFs.js';
+import { SteamAppManifestFs } from './adapters/out/fs/SteamAppManifestFs.js';
+
+import { SteamWebApiClient } from './adapters/out/http-clients/SteamWebApiClient.js';
 
 import { GamesService } from './application/services/GamesService.js';
 import { DashboardService } from './application/services/DashboardService.js';
@@ -66,6 +69,8 @@ export function buildComposition(opts: { dbPath?: string } = {}) {
   const protonDbComm   = new ProtonDBCommunityHttpClient(COMMUNITY_CACHE_DIR);
   const steamLocal     = new SteamLocalConfigFs();
   const protonLog      = new ProtonLogFs();
+  const steamLibrary   = new SteamWebApiClient();
+  const installedGames = new SteamAppManifestFs();
 
   // Services
   const games       = new GamesService(gameRepo);
@@ -76,13 +81,13 @@ export function buildComposition(opts: { dbPath?: string } = {}) {
   const backup      = new BackupService(gameRepo);
   const auth        = new AuthService(userRepo);
   const steamApply  = new SteamApplyService(gameRepo, steamConfigRepo, steamLocal);
-  const sync        = new SyncService(gameRepo, snapshotRepo, systemInfoRepo, steamConfigRepo);
+  const sync        = new SyncService(gameRepo, snapshotRepo, systemInfoRepo, steamConfigRepo, steamLibrary, installedGames, systemDetector, protonDb);
   const ai          = new AIService(aiConfigRepo, aiCacheRepo, gameRepo, systemInfoRepo, protonLog, protonDbComm);
 
   return {
     db, DB_PATH,
     repos: { gameRepo, userRepo, aiConfigRepo, aiCacheRepo, steamConfigRepo, pcgwCacheRepo, extCacheRepo, snapshotRepo, systemInfoRepo },
-    clients: { systemDetector, systemRunner, pcgwClient, steamSearch, protonDb, steamStore, protonDbComm, steamLocal, protonLog },
+    clients: { systemDetector, systemRunner, pcgwClient, steamSearch, protonDb, steamStore, protonDbComm, steamLocal, protonLog, steamLibrary, installedGames },
     services: { games, dashboard, check, pcgw, system, backup, auth, steamApply, sync, ai },
   };
 }

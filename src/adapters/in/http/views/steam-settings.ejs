@@ -5,7 +5,7 @@
   <span class="page-sub">API key + SteamID64 usados pelo Sync pra puxar a biblioteca.</span>
 </div>
 
-<p class="meta" style="margin-bottom:12px">Estas credenciais são persistidas no SQLite e re-escritas em <code>~/.claude/tools/steam-launch/data/credentials.json</code> a cada Sync.</p>
+<p class="meta" style="margin-bottom:12px">Credenciais persistidas no SQLite local. Usadas pelo Sync pra chamar a Steam Web API (<code>IPlayerService/GetOwnedGames</code>).</p>
 
 <form method="post" action="/settings/steam" class="ai-settings-form">
   <label>
