@@ -521,3 +521,13 @@ erDiagram
         int status
     }
 ```
+
+## Licen&ccedil;a
+
+[GNU Affero General Public License v3.0 ou posterior](LICENSE) (AGPL-3.0-or-later).
+
+Resumo pr&aacute;tico: voc&ecirc; pode usar, modificar e redistribuir o ProtonDeck
+livremente, inclusive em servidor pr&oacute;prio. Se voc&ecirc; rodar uma vers&atilde;o
+modificada acess&iacute;vel pela rede (ex.: hospedar pra outras pessoas), precisa
+disponibilizar o c&oacute;digo-fonte das suas modifica&ccedil;&otilde;es sob a mesma
+licen&ccedil;a.

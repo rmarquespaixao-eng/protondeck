@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Dashboard self-hosted de configs Proton da biblioteca Steam (monolito Fastify+TS+SQLite).",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
