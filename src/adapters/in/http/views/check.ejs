@@ -44,6 +44,7 @@
     var q = qEl.value.trim();
     if (q.length < 2) { resEl.innerHTML = ''; return; }
     resEl.innerHTML = '<p class="check-loading">buscando…</p>';
+    PD.setButtonLoading(btn, true, { text: 'Buscando...' });
     fetch('/api/check/search?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -64,7 +65,8 @@
       })
       .catch(function(err) {
         resEl.innerHTML = '<p class="check-err">erro: ' + escapeHTML(err.message) + '</p>';
-      });
+      })
+      .finally(function() { PD.setButtonLoading(btn, false); });
   }
 
   function loadDetail(appid, name) {

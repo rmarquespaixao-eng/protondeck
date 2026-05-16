@@ -420,22 +420,23 @@
     }
 
     btn.addEventListener('click', function() {
-      btn.disabled = true;
+      PD.setButtonLoading(btn, true, { text: 'Aplicando...' });
       status.textContent = 'aplicando…';
       fetch('/api/game/' + GAME_APPID + '/apply-steam', { method: 'POST' })
         .then(function(r) { return r.json().then(function(b) { return { ok: r.ok, body: b }; }); })
         .then(function(res) {
           if (!res.ok) {
             status.innerHTML = '<span class="steam-apply-warn">' + escapeHTML(res.body.error || 'falhou') + '</span>';
-            btn.disabled = false;
+            PD.setButtonLoading(btn, false);
             return;
           }
           status.innerHTML = '<span class="steam-apply-ok">✓ Aplicado. Backup: <code>' + escapeHTML(res.body.backupPath || '') + '</code></span>';
+          PD.setButtonLoading(btn, false);
           setTimeout(refresh, 800);
         })
         .catch(function(err) {
           status.innerHTML = '<span class="steam-apply-warn">erro: ' + escapeHTML(err.message) + '</span>';
-          btn.disabled = false;
+          PD.setButtonLoading(btn, false);
         });
     });
 
@@ -1147,7 +1148,9 @@
   }
 
   document.getElementById('btn-ai-diagnose').addEventListener('click', function() {
+    var btn = this;
     var protonLog = (document.getElementById('ai-proton-log').value || '').trim();
+    PD.setButtonLoading(btn, true, { text: 'Diagnosticando...' });
     showAILoading('Diagnóstico IA');
     fetch('/api/game/' + GAME_APPID + '/diagnose', {
       method: 'POST',
@@ -1159,10 +1162,13 @@
       if (!res.ok) { showAIError('Diagnóstico IA', res.body.error || 'erro desconhecido'); return; }
       renderDiagnoseResult(res.body);
     })
-    .catch(function(e) { showAIError('Diagnóstico IA', e.message); });
+    .catch(function(e) { showAIError('Diagnóstico IA', e.message); })
+    .finally(function() { PD.setButtonLoading(btn, false); });
   });
 
   document.getElementById('btn-ai-suggest').addEventListener('click', function() {
+    var btn = this;
+    PD.setButtonLoading(btn, true, { text: 'Pensando...' });
     showAILoading('Sugestão IA');
     fetch('/api/game/' + GAME_APPID + '/suggest', {
       method: 'POST',
@@ -1174,7 +1180,8 @@
       if (!res.ok) { showAIError('Sugestão IA', res.body.error || 'erro desconhecido'); return; }
       renderSuggestResult(res.body);
     })
-    .catch(function(e) { showAIError('Sugestão IA', e.message); });
+    .catch(function(e) { showAIError('Sugestão IA', e.message); })
+    .finally(function() { PD.setButtonLoading(btn, false); });
   });
 
   function renderTroubleshootResult(data) {
@@ -1234,6 +1241,7 @@
   }
 
   document.getElementById('btn-ai-troubleshoot').addEventListener('click', function() {
+    var btn = this;
     var problem = (document.getElementById('ai-problem-text').value || '').trim();
     if (problem.length < 5) {
       showAIError('Resolver problema · IA', 'Descreva o problema com pelo menos 5 caracteres.');
@@ -1257,6 +1265,7 @@
       },
     };
 
+    PD.setButtonLoading(btn, true, { text: 'Analisando...' });
     showAILoading('Resolver problema · IA');
     fetch('/api/game/' + GAME_APPID + '/troubleshoot', {
       method: 'POST',
@@ -1268,7 +1277,8 @@
       if (!res.ok) { showAIError('Resolver problema · IA', res.body.error || 'erro desconhecido'); return; }
       renderTroubleshootResult(res.body);
     })
-    .catch(function(e) { showAIError('Resolver problema · IA', e.message); });
+    .catch(function(e) { showAIError('Resolver problema · IA', e.message); })
+    .finally(function() { PD.setButtonLoading(btn, false); });
   });
 </script>
 

@@ -1,6 +1,6 @@
 {
   "name": "protondeck",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Dashboard self-hosted de configs Proton da biblioteca Steam (monolito Fastify+TS+SQLite).",

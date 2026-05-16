@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title><%= mode === 'setup' ? 'Setup' : 'Login' %> · ProtonDeck</title>
   <link rel="stylesheet" href="/public/style.css" />
+  <script src="/public/loading.js" defer></script>
 </head>
 <body class="auth-body">
+  <div id="loading-bar"></div>
   <main class="auth-card">
     <h1 class="auth-brand">ProtonDeck</h1>
     <p class="auth-subtitle">

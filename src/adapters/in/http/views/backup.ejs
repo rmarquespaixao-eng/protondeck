@@ -99,7 +99,8 @@
   }
 
   function applyImport() {
-    previewEl.querySelector('#backup-apply').disabled = true;
+    var btn = previewEl.querySelector('#backup-apply');
+    PD.setButtonLoading(btn, true, { text: 'Aplicando import...' });
     fetch('/api/backup/import', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

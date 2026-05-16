@@ -2007,3 +2007,55 @@ form textarea {
   word-break: break-all;
   line-height: 1.4;
 }
+
+/* ────────────────────────────────────────────────
+ * Loading feedback (top bar + button spinner)
+ * ──────────────────────────────────────────────── */
+
+#loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0;
+  background: linear-gradient(90deg, var(--accent), var(--purple));
+  box-shadow: 0 0 8px var(--accent);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: width 0.25s ease, opacity 0.2s ease;
+}
+#loading-bar.is-loading {
+  opacity: 1;
+}
+#loading-bar.is-done {
+  width: 100% !important;
+  opacity: 0;
+  transition: width 0.15s ease, opacity 0.3s ease 0.1s;
+}
+
+/* Spinner inline pra dentro de botões */
+.pd-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: pd-spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+
+@keyframes pd-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Estado is-loading: cursor + opacity, sem mudar layout */
+button.is-loading,
+.is-loading button,
+[type="submit"].is-loading {
+  cursor: wait;
+  opacity: 0.7;
+  pointer-events: none;
+}
