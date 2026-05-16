@@ -1,0 +1,226 @@
+<%- include('partials/shell-top.ejs', { title: 'Wizard de pacotes', active: 'system', currentUser: currentUser }) %>
+
+<div class="page-header">
+  <h1>Wizard de pacotes</h1>
+  <span class="page-sub">Detecta a distro + GPU e instala em tempo real o stack de gaming Proton (gamescope, mangohud, vulkan, steam, protontricks).</span>
+</div>
+
+<div id="sys-summary" class="sys-summary">
+  <p class="sys-loading">consultando o sistema…</p>
+</div>
+
+<section id="sys-sudoers" class="sys-sudoers" style="display:none">
+  <h2>Setup inicial — autorização sudo</h2>
+  <p class="sys-sudoers-explain">
+    Pra evitar prompt de senha a cada install, o ProtonDeck precisa de um
+    <code>/etc/sudoers.d/protondeck</code> com whitelist dos subcomandos do gerenciador
+    de pacotes. Rode <strong>uma vez</strong> no terminal:
+  </p>
+  <pre id="sys-sudoers-cmd" class="sys-sudoers-cmd"></pre>
+  <button type="button" id="sys-sudoers-copy" class="btn-preview">Copiar comando</button>
+  <details class="sys-sudoers-detail">
+    <summary>Ver o conteúdo do sudoers que isso instala</summary>
+    <pre id="sys-sudoers-content" class="sys-sudoers-content"></pre>
+  </details>
+</section>
+
+<section id="sys-groups" class="sys-groups">
+</section>
+
+<!-- Terminal modal -->
+<div id="sys-term-backdrop" class="sys-term-backdrop" style="display:none">
+  <div class="sys-term">
+    <div class="sys-term-head">
+      <span id="sys-term-title">Instalando…</span>
+      <button type="button" id="sys-term-close" class="sys-term-close">&times;</button>
+    </div>
+    <pre id="sys-term-log" class="sys-term-log"></pre>
+    <div class="sys-term-status" id="sys-term-status"></div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    var sumEl    = document.getElementById('sys-summary');
+    var groupsEl = document.getElementById('sys-groups');
+    var sudoersEl = document.getElementById('sys-sudoers');
+    var sudoersCmdEl = document.getElementById('sys-sudoers-cmd');
+    var sudoersContentEl = document.getElementById('sys-sudoers-content');
+    var copyBtn = document.getElementById('sys-sudoers-copy');
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+      });
+    }
+
+    function renderSummary(scan) {
+      var pm = scan.distro.packageManager;
+      var gpu = scan.gpu;
+      sumEl.innerHTML =
+        '<div class="sys-card">' +
+          '<div class="sys-card-row"><span class="sys-card-label">Distro</span><span class="sys-card-value">' +
+            escapeHTML(scan.distro.prettyName || scan.distro.id) +
+            ' <span class="sys-pill">' + escapeHTML(scan.distro.family) + ' · ' + escapeHTML(pm) + '</span>' +
+          '</span></div>' +
+          '<div class="sys-card-row"><span class="sys-card-label">GPU</span><span class="sys-card-value">' +
+            escapeHTML(gpu.model || '(não detectada)') +
+            ' <span class="sys-pill sys-pill-' + escapeHTML(gpu.vendor) + '">' + escapeHTML(gpu.vendor) + '</span>' +
+          '</span></div>' +
+          '<div class="sys-card-row"><span class="sys-card-label">User</span><span class="sys-card-value"><code>' + escapeHTML(scan.user) + '</code></span></div>' +
+          '<div class="sys-card-row"><span class="sys-card-label">Multilib / i386</span><span class="sys-card-value">' +
+            (scan.multilibEnabled ? '<span class="sys-ok">habilitado</span>' : '<span class="sys-err">desabilitado</span>') +
+          '</span></div>' +
+          '<div class="sys-card-row"><span class="sys-card-label">Sudoers</span><span class="sys-card-value">' +
+            (scan.sudoersInstalled ? '<span class="sys-ok">configurado</span>' : '<span class="sys-warn">faltando — veja Setup inicial</span>') +
+          '</span></div>' +
+        '</div>';
+    }
+
+    function renderGroups(groups) {
+      if (!groups.length) {
+        groupsEl.innerHTML = '<p class="sys-empty">Distro não suportada pelo wizard. Suportadas hoje: Arch/CachyOS, Ubuntu/Debian, Fedora.</p>';
+        return;
+      }
+      groupsEl.innerHTML = groups.map(function(g) {
+        var pkgRows = g.packages.map(function(p) {
+          return '<span class="sys-pkg ' + (p.installed ? 'sys-pkg-ok' : 'sys-pkg-missing') + '">' +
+            (p.installed ? '✓' : '·') + ' ' + escapeHTML(p.name) +
+          '</span>';
+        }).join('');
+        return '<div class="sys-group ' + (g.satisfied ? 'sys-group-ok' : '') + '" data-group="' + escapeHTML(g.id) + '">' +
+          '<div class="sys-group-head">' +
+            '<div>' +
+              '<div class="sys-group-label">' + escapeHTML(g.label) +
+                (g.satisfied ? ' <span class="sys-ok">✓ ok</span>' : ' <span class="sys-warn">pendente</span>') +
+              '</div>' +
+              '<div class="sys-group-desc">' + escapeHTML(g.description) + '</div>' +
+            '</div>' +
+            '<button type="button" class="btn-preview sys-install-btn" data-group="' + escapeHTML(g.id) + '" data-label="' + escapeHTML(g.label) + '">' +
+              (g.satisfied ? 'Reinstalar' : 'Instalar') +
+            '</button>' +
+          '</div>' +
+          (pkgRows ? '<div class="sys-pkgs">' + pkgRows + '</div>' : '') +
+          (g.warning ? '<div class="sys-warning">⚠ ' + escapeHTML(g.warning) + '</div>' : '') +
+        '</div>';
+      }).join('');
+
+      groupsEl.querySelectorAll('.sys-install-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          openInstall(btn.dataset.group, btn.dataset.label);
+        });
+      });
+    }
+
+    function loadScan() {
+      fetch('/api/system/scan').then(function(r) { return r.json(); }).then(function(data) {
+        renderSummary(data.scan);
+        renderGroups(data.groups);
+        loadSudoers();
+      }).catch(function(err) {
+        sumEl.innerHTML = '<p class="sys-err">erro no scan: ' + escapeHTML(err.message) + '</p>';
+      });
+    }
+
+    function loadSudoers() {
+      fetch('/api/system/sudoers').then(function(r) { return r.json(); }).then(function(data) {
+        if (!data.content || !data.setupCommand) {
+          sudoersEl.style.display = 'none';
+          return;
+        }
+        sudoersCmdEl.textContent = data.setupCommand;
+        sudoersContentEl.textContent = data.content;
+        sudoersEl.style.display = '';
+        // Se ja instalado, abre <details> fechado e muda titulo
+        if (data.sudoersInstalled) {
+          sudoersEl.classList.add('sys-sudoers-ok');
+        }
+      });
+    }
+
+    copyBtn.addEventListener('click', function() {
+      navigator.clipboard.writeText(sudoersCmdEl.textContent || '').then(function() {
+        var orig = copyBtn.textContent;
+        copyBtn.textContent = 'Copiado!';
+        setTimeout(function() { copyBtn.textContent = orig; }, 1500);
+      });
+    });
+
+    // ─── Install via SSE ─────────────────────────────────────
+    var termBackdrop = document.getElementById('sys-term-backdrop');
+    var termLog      = document.getElementById('sys-term-log');
+    var termTitle    = document.getElementById('sys-term-title');
+    var termStatus   = document.getElementById('sys-term-status');
+    var termClose    = document.getElementById('sys-term-close');
+    var currentES    = null;
+
+    termClose.addEventListener('click', closeTerm);
+    termBackdrop.addEventListener('click', function(e) { if (e.target === termBackdrop) closeTerm(); });
+
+    function closeTerm() {
+      if (currentES) { currentES.close(); currentES = null; }
+      termBackdrop.style.display = 'none';
+    }
+
+    function appendLine(prefix, line, cls) {
+      var div = document.createElement('div');
+      div.className = 'sys-term-line ' + (cls || '');
+      div.textContent = (prefix ? prefix + ' ' : '') + line;
+      termLog.appendChild(div);
+      termLog.scrollTop = termLog.scrollHeight;
+    }
+
+    function openInstall(groupId, label) {
+      termTitle.textContent = label;
+      termLog.innerHTML = '';
+      termStatus.textContent = 'conectando…';
+      termStatus.className = 'sys-term-status';
+      termBackdrop.style.display = '';
+
+      var es = new EventSource('/api/system/install/' + encodeURIComponent(groupId) + '/stream');
+      currentES = es;
+
+      es.addEventListener('start', function(e) {
+        var d = JSON.parse(e.data);
+        appendLine('▸', 'iniciando ' + d.label + ' (' + d.commands + ' comando(s))', 'sys-term-info');
+        termStatus.textContent = 'executando…';
+      });
+      es.addEventListener('cmd', function(e) {
+        var d = JSON.parse(e.data);
+        appendLine('$', d.cmd, 'sys-term-cmd');
+      });
+      es.addEventListener('stdout', function(e) {
+        var d = JSON.parse(e.data);
+        appendLine('', d.line, 'sys-term-stdout');
+      });
+      es.addEventListener('stderr', function(e) {
+        var d = JSON.parse(e.data);
+        appendLine('!', d.line, 'sys-term-stderr');
+      });
+      es.addEventListener('exit', function(e) {
+        var d = JSON.parse(e.data);
+        appendLine('▸', 'exit code ' + d.code, d.code === 0 ? 'sys-term-info' : 'sys-term-stderr');
+      });
+      es.addEventListener('error', function(e) {
+        // 'error' event do EventSource (sem data) vs evento server-sent 'error' (com data)
+        if (e.data) {
+          try { var d = JSON.parse(e.data); appendLine('✕', d.message, 'sys-term-stderr'); } catch (err) {}
+        } else {
+          // conexao caiu — EventSource tenta reconectar; fechamos manualmente
+        }
+      });
+      es.addEventListener('done', function(e) {
+        var d = JSON.parse(e.data);
+        termStatus.textContent = d.ok ? '✓ concluído com sucesso' : '✕ falhou' + (d.failedAt != null ? ' no comando ' + (d.failedAt + 1) : '');
+        termStatus.className = 'sys-term-status ' + (d.ok ? 'sys-term-ok' : 'sys-term-err');
+        es.close();
+        currentES = null;
+        if (d.ok) setTimeout(loadScan, 600);
+      });
+    }
+
+    loadScan();
+  })();
+</script>
+
+<%- include('partials/shell-bot.ejs') %>
