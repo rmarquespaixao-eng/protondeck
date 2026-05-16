@@ -1618,3 +1618,147 @@ form textarea {
 }
 .sys-term-ok  { color: var(--tier-native); }
 .sys-term-err { color: var(--tier-borked); }
+
+/* ── Check ("Vai rodar?") ── */
+.check-search-box {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0 18px;
+}
+.check-search-box input {
+  flex: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-size: 14px;
+}
+.check-search-box input:focus { outline: none; border-color: var(--accent); }
+.check-search-box button {
+  background: var(--accent);
+  color: #0a0e16;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check-loading, .check-empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+.check-err { color: var(--tier-borked); font-size: 13px; padding: 8px 0; }
+
+.check-hits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.check-hit {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.1s;
+  color: var(--text);
+  font-family: inherit;
+}
+.check-hit:hover { border-color: var(--accent); }
+.check-hit img, .check-hit-noimg {
+  width: 60px;
+  height: 25px;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.check-hit-meta { flex: 1; min-width: 0; }
+.check-hit-name {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.check-hit-appid { font-size: 11px; color: var(--muted); }
+
+.check-detail-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.check-recommendation {
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--border);
+}
+.check-rec-icon { font-size: 22px; }
+.rec-go         { background: color-mix(in srgb, var(--tier-native) 14%, var(--panel)); color: var(--tier-native); }
+.rec-caution    { background: color-mix(in srgb, var(--tier-gold) 14%, var(--panel));   color: var(--tier-gold); }
+.rec-risky      { background: color-mix(in srgb, var(--tier-borked) 14%, var(--panel)); color: var(--tier-borked); }
+.rec-unreleased { background: color-mix(in srgb, var(--accent) 12%, var(--panel));      color: var(--accent); }
+.rec-nodata     { background: var(--panel-2); color: var(--muted); }
+
+.check-header-img { width: 100%; max-height: 200px; object-fit: cover; display: block; }
+.check-detail-body { padding: 16px 18px; }
+.check-game-name { margin: 0 0 4px; font-size: 18px; }
+.check-sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.check-desc { color: var(--text); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+
+.check-section { margin: 14px 0; }
+.check-section-title {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.check-platforms { display: flex; gap: 8px; flex-wrap: wrap; }
+.check-platform {
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.check-platform-on  { background: color-mix(in srgb, var(--tier-native) 18%, transparent); color: var(--tier-native); }
+.check-platform-off { background: var(--bg-2); color: var(--muted); opacity: 0.6; }
+
+.check-protondb { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.check-tier {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.check-pcgw-list { list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 1.7; }
+.check-pcgw-list li { color: var(--text); }
+.check-pcgw-native      { color: var(--tier-native); font-weight: 600; }
+.check-pcgw-hackable    { color: var(--tier-gold); font-weight: 600; }
+.check-pcgw-limited     { color: var(--tier-bronze); font-weight: 600; }
+.check-pcgw-unsupported { color: var(--tier-borked); font-weight: 600; }
+.check-pcgw-unknown     { color: var(--muted); }
+
+.check-reasons { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text); }
+.check-reasons li { margin: 3px 0; }
+
+.check-muted { color: var(--muted); font-size: 12px; }
+.check-footer { margin-top: 14px; }
+.check-footer a { color: var(--accent); text-decoration: none; }
+.check-footer a:hover { text-decoration: underline; }

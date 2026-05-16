@@ -91,6 +91,15 @@ db.exec(`
     fetched_at TEXT NOT NULL,
     status INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS external_cache (
+    scope TEXT NOT NULL,
+    cache_key TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    fetched_at TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    PRIMARY KEY (scope, cache_key)
+  );
 `);
 
 export type GameRow = {
@@ -431,4 +440,34 @@ export function setPCGWCache(appid: string, payload: string, status: number): vo
       fetched_at = excluded.fetched_at,
       status = excluded.status
   `).run(appid, payload, new Date().toISOString(), status);
+}
+
+// ───────── Cache externo generico (protondb, steamstore, steam-search) ─────────
+
+export type ExternalCacheRow = {
+  scope: string;
+  cache_key: string;
+  payload: string;
+  fetched_at: string;
+  status: number;
+};
+
+export function getExternalCache(scope: string, key: string, ttlMs: number): ExternalCacheRow | null {
+  const row = db.prepare('SELECT scope, cache_key, payload, fetched_at, status FROM external_cache WHERE scope = ? AND cache_key = ?')
+    .get(scope, key) as ExternalCacheRow | undefined;
+  if (!row) return null;
+  const age = Date.now() - new Date(row.fetched_at).getTime();
+  if (age > ttlMs) return null;
+  return row;
+}
+
+export function setExternalCache(scope: string, key: string, payload: string, status: number): void {
+  db.prepare(`
+    INSERT INTO external_cache (scope, cache_key, payload, fetched_at, status)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(scope, cache_key) DO UPDATE SET
+      payload = excluded.payload,
+      fetched_at = excluded.fetched_at,
+      status = excluded.status
+  `).run(scope, key, payload, new Date().toISOString(), status);
 }

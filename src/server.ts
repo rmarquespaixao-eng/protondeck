@@ -13,6 +13,7 @@ import { aiRoutes } from './routes/ai.js';
 import { steamRoutes } from './routes/steam.js';
 import { authRoutes } from './routes/auth.js';
 import { systemRoutes } from './routes/system.js';
+import { checkRoutes } from './routes/check.js';
 import { countUsers } from './db.js';
 
 // Carrega .env do cwd automaticamente (Node >=20.12). Silencia se nao existe.
@@ -89,6 +90,7 @@ await fastify.register(configRoutes);
 await fastify.register(aiRoutes);
 await fastify.register(steamRoutes);
 await fastify.register(systemRoutes);
+await fastify.register(checkRoutes);
 
 const port = Number(process.env.PORT ?? 3030);
 const host = process.env.HOST ?? '127.0.0.1';
