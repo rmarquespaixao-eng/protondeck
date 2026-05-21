@@ -136,8 +136,6 @@ EnvironmentFile=$INSTALL_DIR/.env
 ExecStart=$INSTALL_DIR/run.sh
 Restart=on-failure
 RestartSec=5
-# Roda como user normal — sem privilegios extras
-NoNewPrivileges=true
 
 [Install]
 WantedBy=default.target
