@@ -32,7 +32,7 @@ class FakeSystemDetector implements SystemDetector {
   async hasBinaries(names: string[]) { return Object.fromEntries(names.map(n => [n, this.s.binaries[n] ?? false])); }
   async arePackagesInstalled(_pm: any, pkgs: string[]) { return Object.fromEntries(pkgs.map(p => [p, this.s.packages[p] ?? false])); }
   async isMultilibEnabled() { return this.s.multilibEnabled; }
-  async sudoersInstalled() { return this.s.sudoersInstalled; }
+  async sudoersInstalled(_f: any) { return this.s.sudoersInstalled; }
 }
 
 class FakeProtonDb implements ProtonDBClient {

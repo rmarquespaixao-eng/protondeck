@@ -6,6 +6,6 @@ export interface SystemDetector {
   hasBinaries(names: string[]): Promise<Record<string, boolean>>;
   arePackagesInstalled(pm: PackageManager, pkgs: string[]): Promise<Record<string, boolean>>;
   isMultilibEnabled(family: DistroFamily): Promise<boolean>;
-  sudoersInstalled(): Promise<boolean>;
+  sudoersInstalled(family: DistroFamily): Promise<boolean>;
   scan(): Promise<SystemScan>;
 }

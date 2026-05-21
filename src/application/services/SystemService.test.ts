@@ -40,7 +40,7 @@ function buildSvc(opts: {
       return out;
     },
     async isMultilibEnabled(_f) { return (opts.scan ?? fakeScan()).multilibEnabled; },
-    async sudoersInstalled() { return (opts.scan ?? fakeScan()).sudoersInstalled; },
+    async sudoersInstalled(_f) { return (opts.scan ?? fakeScan()).sudoersInstalled; },
     async scan() { return opts.scan ?? fakeScan(); },
   };
   const runner: SystemRunner = {

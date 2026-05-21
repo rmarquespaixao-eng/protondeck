@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { userInfo } from 'node:os';
 import type { SystemDetector } from '../../../application/ports/out/SystemDetector.js';
 import type {
   DistroFamily, DistroInfo, GpuInfo, GpuVendor, PackageManager, SystemScan,
@@ -157,10 +158,17 @@ export class LinuxSystemDetector implements SystemDetector {
     return family === 'fedora';
   }
 
-  async sudoersInstalled(): Promise<boolean> {
+  async sudoersInstalled(family: DistroFamily): Promise<boolean> {
+    const testCmdMap: Partial<Record<DistroFamily, string[]>> = {
+      arch:   ['/usr/bin/pacman', '-Sy'],
+      debian: ['/usr/bin/apt-get', 'update'],
+      fedora: ['/usr/bin/dnf', 'check-update'],
+    };
+    const testCmd = testCmdMap[family];
+    if (!testCmd) return false;
     try {
-      const { stdout } = await execFileAsync('sudo', ['-n', '-l'], { timeout: 3000 });
-      return /protondeck/i.test(stdout) || /pacman|apt-get|dnf/i.test(stdout);
+      await execFileAsync('sudo', ['-n', '-l', ...testCmd], { timeout: 3000 });
+      return true;
     } catch {
       return false;
     }
@@ -170,8 +178,9 @@ export class LinuxSystemDetector implements SystemDetector {
     const [distro, gpu] = await Promise.all([this.detectDistro(), this.detectGpu()]);
     const multilibEnabled = await this.isMultilibEnabled(distro.family);
     const binaries = await this.hasBinaries(['gamescope', 'mangohud', 'gamemoded', 'steam', 'protontricks', 'winetricks', 'vulkaninfo']);
-    const user = process.env.USER ?? 'unknown';
-    const sudoersInstalled = await this.sudoersInstalled();
+    let user: string;
+    try { user = userInfo().username; } catch { user = process.env.USER ?? 'unknown'; }
+    const sudoersInstalled = await this.sudoersInstalled(distro.family);
     return { distro, gpu, user, multilibEnabled, binaries, packages: {}, sudoersInstalled };
   }
 }
