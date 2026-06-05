@@ -1,0 +1,100 @@
+name: Release (Linux -> publica no Gitea)
+
+# Disparo manual informando a versão (X.Y.Z). Roda no runner Linux do homelab:
+#   valida versão/tag -> testa -> empacota AppImage + deb -> cria Release vX.Y.Z
+#   e sobe os artefatos como assets (API interna http://gitea:3000).
+#
+# Linux-only (o ProtonDeck é app Linux). Para o mirror público no GitHub use
+# .github/workflows/release.yml (dispara por tag).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão a lançar (ex: 0.3.0)"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Meta (valida versão)
+        id: meta
+        env:
+          IN: ${{ github.event.inputs.version }}
+        run: |
+          V="${IN#v}"; TAG="v${V}"
+          echo "$V" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "::error::versão inválida: $IN (use X.Y.Z)"; exit 1; }
+          if git rev-parse "$TAG" >/dev/null 2>&1; then echo "::error::tag $TAG já existe"; exit 1; fi
+          { echo "v=$V"; echo "tag=$TAG"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+          echo ">> lançando v${V} no commit $(git rev-parse --short HEAD)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # --ignore-scripts pula o postinstall (rebuild pra ABI do Electron); roda
+      # os testes sob Node e deixa o electron-builder recompilar no empacotamento.
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3
+
+      - name: Testes
+        run: npm test
+
+      - name: Versão dos artefatos (sem commit)
+        run: npm version "${{ steps.meta.outputs.v }}" --no-git-tag-version --allow-same-version
+
+      - name: Bundle (electron-vite)
+        run: npm run build
+
+      - name: Empacota Linux (AppImage + deb)
+        run: npx electron-builder --linux --publish never
+
+      - name: Lista artefatos
+        run: ls -lh release || true
+
+      - name: Cria Release no Gitea
+        id: rel
+        env:
+          TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          SHA: ${{ steps.meta.outputs.sha }}
+          V: ${{ steps.meta.outputs.v }}
+        run: |
+          CHANGELOG=$(git log --no-merges --format='- %s (%h)' -n 30 || true)
+          [ -n "$CHANGELOG" ] || CHANGELOG="- release ${V}"
+          ID=$(jq -n --arg t "$TAG" --arg c "$SHA" --arg b "$CHANGELOG" \
+                '{tag_name:$t, target_commitish:$c, name:$t, body:$b, draft:false, prerelease:false}' \
+              | curl -fsS -X POST "http://gitea:3000/api/v1/repos/${REPO}/releases" \
+                  -H "Authorization: token ${TOKEN}" -H "Content-Type: application/json" --data @- \
+              | jq -r '.id')
+          [ -n "$ID" ] && [ "$ID" != "null" ] || { echo "::error::falha ao criar release"; exit 1; }
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo ">> Release ${TAG} criado (id ${ID})"
+
+      - name: Sobe os artefatos como assets
+        env:
+          TOKEN: ${{ secrets.CI_PUSH_TOKEN }}
+          REPO: ${{ github.repository }}
+          ID: ${{ steps.rel.outputs.id }}
+        run: |
+          count=0
+          for f in release/*.AppImage release/*.deb; do
+            [ -e "$f" ] || continue
+            echo ">> upload $(basename "$f")"
+            curl -fsS -X POST \
+              "http://gitea:3000/api/v1/repos/${REPO}/releases/${ID}/assets?name=$(basename "$f")" \
+              -H "Authorization: token ${TOKEN}" \
+              -F "attachment=@${f}" >/dev/null
+            count=$((count + 1))
+          done
+          [ "$count" -gt 0 ] || { echo "::error::nenhum artefato encontrado"; exit 1; }
+          echo "✓ ${count} asset(s) enviados ao release ${{ steps.meta.outputs.tag }}"

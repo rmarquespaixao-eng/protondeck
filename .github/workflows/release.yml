@@ -1,0 +1,50 @@
+name: Release (Linux)
+
+# Dispara ao empurrar uma tag vX.Y.Z. Builda os instaladores Linux (AppImage +
+# deb) no runner do GitHub e publica num GitHub Release.
+#
+#   git tag v0.3.0 && git push github v0.3.0
+#
+# Linux-only: o ProtonDeck é um app Linux (lê config do Steam, roda sudo,
+# detecta a distro) — instaladores Windows/macOS não fariam sentido.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # sem assinatura de código
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # --ignore-scripts pula o postinstall (rebuild pra ABI do Electron); roda
+      # os testes sob Node e deixa o electron-builder recompilar no empacotamento.
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3
+
+      - name: Testes
+        run: npm test
+
+      - name: Bundle (electron-vite)
+        run: npm run build
+
+      - name: Empacota Linux (AppImage + deb)
+        run: npx electron-builder --linux --publish never
+
+      - name: GitHub Release com os instaladores
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.AppImage
+            release/*.deb
+          fail_on_unmatched_files: true
