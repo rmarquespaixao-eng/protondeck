@@ -2,5 +2,6 @@
 /data
 .env
 .env.local
+/out
 /dist
-/dist-release
+/release

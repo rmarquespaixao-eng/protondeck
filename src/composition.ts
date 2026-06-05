@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { openDatabase, runMigrations, type DB } from './adapters/out/persistence/sqlite/connection.js';
 import { GameRepositorySqlite } from './adapters/out/persistence/sqlite/GameRepositorySqlite.js';
-import { UserRepositorySqlite } from './adapters/out/persistence/sqlite/UserRepositorySqlite.js';
 import { AIConfigRepositorySqlite, AICacheRepositorySqlite } from './adapters/out/persistence/sqlite/AIRepositoriesSqlite.js';
 import { SteamConfigRepositorySqlite } from './adapters/out/persistence/sqlite/SteamConfigRepositorySqlite.js';
 import { PCGWCacheRepositorySqlite, ExternalCacheRepositorySqlite } from './adapters/out/persistence/sqlite/CacheRepositoriesSqlite.js';
@@ -31,7 +30,6 @@ import { CheckService } from './application/services/CheckService.js';
 import { PCGWService } from './application/services/PCGWService.js';
 import { SystemService } from './application/services/SystemService.js';
 import { BackupService } from './application/services/BackupService.js';
-import { AuthService } from './application/services/AuthService.js';
 import { SteamApplyService } from './application/services/SteamApplyService.js';
 import { SyncService } from './application/services/SyncService.js';
 import { AIService } from './application/services/AIService.js';
@@ -50,7 +48,6 @@ export function buildComposition(opts: { dbPath?: string } = {}) {
 
   // Repos
   const gameRepo        = new GameRepositorySqlite(db);
-  const userRepo        = new UserRepositorySqlite(db);
   const aiConfigRepo    = new AIConfigRepositorySqlite(db);
   const aiCacheRepo     = new AICacheRepositorySqlite(db);
   const steamConfigRepo = new SteamConfigRepositorySqlite(db);
@@ -79,15 +76,14 @@ export function buildComposition(opts: { dbPath?: string } = {}) {
   const pcgw        = new PCGWService(pcgwClient);
   const system      = new SystemService(systemDetector, systemRunner);
   const backup      = new BackupService(gameRepo);
-  const auth        = new AuthService(userRepo);
   const steamApply  = new SteamApplyService(gameRepo, steamConfigRepo, steamLocal);
   const sync        = new SyncService(gameRepo, snapshotRepo, systemInfoRepo, steamConfigRepo, steamLibrary, installedGames, systemDetector, protonDb);
   const ai          = new AIService(aiConfigRepo, aiCacheRepo, gameRepo, systemInfoRepo, protonLog, protonDbComm);
 
   return {
     db, DB_PATH,
-    repos: { gameRepo, userRepo, aiConfigRepo, aiCacheRepo, steamConfigRepo, pcgwCacheRepo, extCacheRepo, snapshotRepo, systemInfoRepo },
+    repos: { gameRepo, aiConfigRepo, aiCacheRepo, steamConfigRepo, pcgwCacheRepo, extCacheRepo, snapshotRepo, systemInfoRepo },
     clients: { systemDetector, systemRunner, pcgwClient, steamSearch, protonDb, steamStore, protonDbComm, steamLocal, protonLog, steamLibrary, installedGames },
-    services: { games, dashboard, check, pcgw, system, backup, auth, steamApply, sync, ai },
+    services: { games, dashboard, check, pcgw, system, backup, steamApply, sync, ai },
   };
 }

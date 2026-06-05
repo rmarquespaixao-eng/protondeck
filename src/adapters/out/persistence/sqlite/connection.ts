@@ -78,13 +78,6 @@ export function runMigrations(db: DB): void {
       updated_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS pcgw_cache (
       appid TEXT PRIMARY KEY,
       payload TEXT NOT NULL,

@@ -41,7 +41,7 @@ const ARCH_GROUPS: RecipeGroup[] = [
     family: 'arch',
     packages: [],
     preCommands: [
-      ['/usr/bin/sed', '-i', '/^#\\[multilib\\]/,/^#Include = \\/etc\\/pacman.d\\/mirrorlist/ s/^#//', '/etc/pacman.conf'],
+      ['/usr/local/bin/protondeck-enable-multilib'],
       ['/usr/bin/pacman', '-Sy'],
     ],
     warning: 'Modifica /etc/pacman.conf descomentando a section [multilib].',
