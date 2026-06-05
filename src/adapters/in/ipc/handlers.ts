@@ -1,5 +1,7 @@
 import { ipcMain, dialog, shell, app, type BrowserWindow } from 'electron';
 import { writeFile, readFile } from 'node:fs/promises';
+import { copyFileSync, existsSync, rmSync } from 'node:fs';
+import Database from 'better-sqlite3';
 import type { Composition } from '../../../composition.js';
 import type { GameListFilter } from '../../../application/ports/out/GameRepository.js';
 import { PROVIDER_MODELS, DEFAULT_BASE_URLS, type CurrentScreenState } from '../../../application/services/AIService.js';
@@ -195,5 +197,74 @@ export function registerIpc(composition: Composition, getWindow: () => BrowserWi
     const plan = s.backup.buildPlan(validation.entries);
     const result = s.backup.apply(plan);
     return { phase: 'applied' as const, ...result, plan };
+  });
+
+  // ──────────────── backup COMPLETO do banco (.db) ────────────────
+  // Snapshot/restore do SQLite inteiro (jogos, overrides, creds, IA, snapshots,
+  // caches) — pra não perder nada ao trocar de máquina ou reinstalar.
+  const countTable = (probe: Database.Database, t: string): number => {
+    try { return (probe.prepare(`SELECT count(*) AS n FROM ${t}`).get() as { n: number }).n; }
+    catch { return 0; }
+  };
+  const isProtonDeckDb = (path: string): boolean => {
+    try {
+      const probe = new Database(path, { readonly: true, fileMustExist: true });
+      try {
+        return !!probe.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='games'").get();
+      } finally { probe.close(); }
+    } catch { return false; }
+  };
+
+  handle('db:export', async () => {
+    const win = getWindow();
+    const filename = `protondeck-backup-${new Date().toISOString().slice(0, 10)}.db`;
+    const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+      title: 'Exportar banco completo',
+      defaultPath: filename,
+      filters: [{ name: 'SQLite', extensions: ['db'] }],
+    });
+    if (canceled || !filePath) return { ok: false, canceled: true };
+    // backup online do better-sqlite3 — snapshot consistente mesmo com o app aberto
+    await composition.db.backup(filePath);
+    return { ok: true, path: filePath };
+  });
+
+  handle('db:importPreview', async () => {
+    const win = getWindow();
+    const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+      title: 'Restaurar banco completo',
+      properties: ['openFile'],
+      filters: [{ name: 'SQLite', extensions: ['db'] }, { name: 'Todos', extensions: ['*'] }],
+    });
+    if (canceled || !filePaths.length) return { phase: 'canceled' as const };
+    const path = filePaths[0]!;
+    if (!isProtonDeckDb(path)) {
+      return { phase: 'error' as const, error: 'arquivo não é um backup de banco válido do ProtonDeck (.db)' };
+    }
+    const probe = new Database(path, { readonly: true, fileMustExist: true });
+    const stats = {
+      games: countTable(probe, 'games'),
+      overrides: (probe.prepare('SELECT count(*) AS n FROM games WHERE user_launch_options IS NOT NULL OR user_notes IS NOT NULL').get() as { n: number }).n,
+      steamConfig: countTable(probe, 'steam_config'),
+      aiConfig: countTable(probe, 'ai_config'),
+      snapshots: countTable(probe, 'snapshots'),
+    };
+    probe.close();
+    return { phase: 'preview' as const, path, stats };
+  });
+
+  handle('db:importApply', (_e, srcPath: string) => {
+    if (!srcPath || !existsSync(srcPath)) throw new Error('arquivo de backup não encontrado');
+    if (!isProtonDeckDb(srcPath)) throw new Error('arquivo não é um backup de banco válido do ProtonDeck');
+    const dbPath = composition.DB_PATH;
+    // fecha o db atual, guarda um .bak do atual, substitui e reinicia o app
+    try { composition.db.close(); } catch { /* já fechado */ }
+    try { copyFileSync(dbPath, `${dbPath}.bak`); } catch { /* sem db anterior */ }
+    for (const suffix of ['-wal', '-shm']) {
+      if (existsSync(dbPath + suffix)) { try { rmSync(dbPath + suffix); } catch { /* noop */ } }
+    }
+    copyFileSync(srcPath, dbPath);
+    app.relaunch();
+    app.exit(0);
   });
 }

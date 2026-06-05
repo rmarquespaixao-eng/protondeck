@@ -59,6 +59,11 @@ const api = {
     import: () => ipcRenderer.invoke('backup:import'),
     applyImport: (payload: unknown) => ipcRenderer.invoke('backup:applyImport', payload),
   },
+  db: {
+    export: () => ipcRenderer.invoke('db:export'),
+    importPreview: () => ipcRenderer.invoke('db:importPreview'),
+    importApply: (path: string) => ipcRenderer.invoke('db:importApply', path),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);
