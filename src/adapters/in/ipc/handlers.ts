@@ -61,6 +61,11 @@ export function registerIpc(composition: Composition, getWindow: () => BrowserWi
     s.pcgw.fetchWidescreen(appid, { force: !!force }));
   handle('games:steamLaunch', (_e, appid: string) => s.steamApply.describe(appid));
   handle('games:applySteam', (_e, appid: string) => s.steamApply.apply(appid));
+  handle('games:applySteamMany', (_e, appids: string[]) => {
+    if (!Array.isArray(appids) || !appids.length) throw new Error('nenhum jogo selecionado');
+    if (appids.some(a => typeof a !== 'string' || !/^\d+$/.test(a))) throw new Error('appid inválido na seleção');
+    return s.steamApply.applyMany(appids);
+  });
 
   // ──────────────── sync ────────────────
   handle('sync:run', () => s.sync.syncFromSteamLaunch());
@@ -84,7 +89,7 @@ export function registerIpc(composition: Composition, getWindow: () => BrowserWi
   }));
   handle('ai:setConfig', (_e, cfg: { provider: string; model: string; api_key?: string | null; base_url?: string | null }) => {
     if (!cfg?.provider || !cfg?.model) throw new Error('provider e model obrigatórios');
-    if (!['anthropic', 'openai', 'ollama'].includes(cfg.provider)) throw new Error('provider inválido');
+    if (!['anthropic', 'openai', 'deepseek', 'ollama'].includes(cfg.provider)) throw new Error('provider inválido');
     s.ai.setConfig({
       provider: cfg.provider,
       model: cfg.model,

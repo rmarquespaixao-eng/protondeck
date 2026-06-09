@@ -8,7 +8,7 @@ import OpenAI from 'openai';
 import type { ToolDef, ToolCallContext, ToolResult } from './Tools.js';
 import { runTool } from './Tools.js';
 
-export type AIProvider = 'anthropic' | 'openai' | 'ollama';
+export type AIProvider = 'anthropic' | 'openai' | 'deepseek' | 'ollama';
 
 export type AICallConfig = {
   provider: AIProvider;
@@ -64,6 +64,10 @@ export const PROVIDER_MODELS: Record<AIProvider, Array<{ id: string; label: stri
     { id: 'o1',          label: 'o1',          note: 'Reasoning profundo (sem tools)' },
     { id: 'o1-mini',     label: 'o1-mini',     note: 'Reasoning rápido' },
   ],
+  deepseek: [
+    { id: 'deepseek-v4-pro',   label: 'DeepSeek V4 Pro',   note: 'Recomendado — mais capaz, cache + tools (endpoint Anthropic-compat)' },
+    { id: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash',  note: 'Rápido e barato' },
+  ],
   ollama: [
     { id: 'qwen2.5-coder:7b',  label: 'Qwen2.5 Coder 7B',  note: 'Bom em tasks técnicas, leve' },
     { id: 'qwen2.5-coder:32b', label: 'Qwen2.5 Coder 32B', note: 'Maior, mais capaz' },
@@ -78,6 +82,7 @@ export const PROVIDER_MODELS: Record<AIProvider, Array<{ id: string; label: stri
 export const DEFAULT_BASE_URLS: Record<AIProvider, string> = {
   anthropic: 'https://api.anthropic.com',
   openai:    'https://api.openai.com/v1',
+  deepseek:  'https://api.deepseek.com/anthropic',
   ollama:    'http://localhost:11434',
 };
 
@@ -90,7 +95,10 @@ const DEFAULT_TEMPERATURE = 0.2;
 // ────────────────────────────────────────────────────
 
 export async function runAgent(cfg: AICallConfig, opts: AgentRunOpts): Promise<AgentRunResult> {
-  if (cfg.provider === 'anthropic') return runAnthropicAgent(cfg, opts);
+  // DeepSeek expõe um endpoint Anthropic-compat (api.deepseek.com/anthropic) com
+  // cache_control + tool use — roteia pelo mesmo runner da Anthropic, igual aos
+  // outros agentes (ai-vps). Basta a baseURL + a chave DeepSeek.
+  if (cfg.provider === 'anthropic' || cfg.provider === 'deepseek') return runAnthropicAgent(cfg, opts);
   if (cfg.provider === 'openai')    return runOpenAIAgent(cfg, opts);
   if (cfg.provider === 'ollama')    return runOllamaSimple(cfg, opts);
   throw new Error(`provider desconhecido: ${cfg.provider}`);
@@ -101,11 +109,11 @@ export async function runAgent(cfg: AICallConfig, opts: AgentRunOpts): Promise<A
 // ────────────────────────────────────────────────────
 
 async function runAnthropicAgent(cfg: AICallConfig, opts: AgentRunOpts): Promise<AgentRunResult> {
-  if (!cfg.apiKey) throw new Error('Anthropic API key ausente — configure em /settings/ai');
+  if (!cfg.apiKey) throw new Error(`${cfg.provider} API key ausente — configure em /settings/ai`);
 
   const client = new Anthropic({
     apiKey: cfg.apiKey,
-    baseURL: cfg.baseUrl?.trim() || DEFAULT_BASE_URLS.anthropic,
+    baseURL: cfg.baseUrl?.trim() || DEFAULT_BASE_URLS[cfg.provider],
   });
 
   // System como array de blocks, marcando blocos estáveis com cache_control
@@ -189,15 +197,15 @@ async function runAnthropicAgent(cfg: AICallConfig, opts: AgentRunOpts): Promise
 }
 
 // ────────────────────────────────────────────────────
-//  OpenAI — Chat Completions com tools + cache automático
+//  OpenAI (e compatíveis: DeepSeek) — Chat Completions com tools + cache automático
 // ────────────────────────────────────────────────────
 
 async function runOpenAIAgent(cfg: AICallConfig, opts: AgentRunOpts): Promise<AgentRunResult> {
-  if (!cfg.apiKey) throw new Error('OpenAI API key ausente — configure em /settings/ai');
+  if (!cfg.apiKey) throw new Error(`${cfg.provider} API key ausente — configure em /settings/ai`);
 
   const client = new OpenAI({
     apiKey: cfg.apiKey,
-    baseURL: cfg.baseUrl?.trim() || DEFAULT_BASE_URLS.openai,
+    baseURL: cfg.baseUrl?.trim() || DEFAULT_BASE_URLS[cfg.provider],
   });
 
   // OpenAI faz cache automático em prompts > 1024 tokens; basta colocar a parte

@@ -18,7 +18,7 @@ export function generateSudoersContent(user: string, family: DistroFamily): stri
       `${user} ALL=(root) NOPASSWD: /usr/bin/pacman -S --needed --noconfirm *`,
       `${user} ALL=(root) NOPASSWD: /usr/bin/pacman -Sy`,
       `${user} ALL=(root) NOPASSWD: /usr/bin/pacman -Syu --noconfirm`,
-      `${user} ALL=(root) NOPASSWD: /usr/bin/sed -i /^#\\\\[multilib\\\\]/,/^#Include = \\\\/etc\\\\/pacman.d\\\\/mirrorlist/ s/^#// /etc/pacman.conf`,
+      `${user} ALL=(root) NOPASSWD: /usr/local/bin/protondeck-enable-multilib`,
     );
   } else if (family === 'debian') {
     lines.push(
@@ -47,11 +47,24 @@ export function generateSudoersContent(user: string, family: DistroFamily): stri
 export function generateSetupCommand(user: string, family: DistroFamily): string | null {
   const content = generateSudoersContent(user, family);
   if (!content) return null;
-  return [
+  const parts = [
     `sudo tee /etc/sudoers.d/protondeck > /dev/null <<'EOF'`,
     content.trimEnd(),
     `EOF`,
     `sudo chmod 440 /etc/sudoers.d/protondeck`,
     `sudo visudo -c -f /etc/sudoers.d/protondeck`,
-  ].join('\n');
+  ];
+  if (family === 'arch') {
+    parts.push(
+      ``,
+      `# Script helper para habilitar multilib (sem args problematicos no sudoers)`,
+      `sudo tee /usr/local/bin/protondeck-enable-multilib > /dev/null <<'SCRIPT'`,
+      `#!/bin/bash`,
+      `sed -i '/^#\\[multilib\\]/s/^#//' /etc/pacman.conf`,
+      `sed -i '/^\\[multilib\\]/{n;s/^#Include/Include/}' /etc/pacman.conf`,
+      `SCRIPT`,
+      `sudo chmod 755 /usr/local/bin/protondeck-enable-multilib`,
+    );
+  }
+  return parts.join('\n');
 }

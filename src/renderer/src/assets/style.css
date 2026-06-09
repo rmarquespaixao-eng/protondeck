@@ -172,7 +172,44 @@ main { padding: 0; }
   background: color-mix(in srgb, var(--tier-gold) 6%, transparent);
   border-color: color-mix(in srgb, var(--tier-gold) 30%, var(--border));
 }
+.banner-ok {
+  color: var(--tier-native);
+  background: color-mix(in srgb, var(--tier-native) 6%, transparent);
+  border-color: color-mix(in srgb, var(--tier-native) 30%, var(--border));
+}
 .banner a { color: inherit; }
+.bulk-failures { margin: 8px 0 0; padding-left: 18px; }
+.bulk-failures li { margin: 2px 0; }
+.bulk-failures code { background: var(--panel-2); padding: 1px 4px; border-radius: 3px; }
+
+/* Barra de ação da seleção múltipla na biblioteca */
+.bulk-bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; margin-bottom: 12px;
+  background: var(--panel-2); border: 1px solid var(--accent);
+  border-radius: 6px; font-size: 13px;
+}
+.bulk-bar .spacer { flex: 1; }
+.bulk-count { color: var(--text); }
+.bulk-confirm { color: var(--tier-gold); }
+.bulk-link { color: var(--muted); cursor: pointer; }
+.bulk-link:hover { color: var(--accent); }
+.bulk-apply { background: var(--accent); color: #0a0d12; border: 0; border-radius: 4px; padding: 6px 12px; cursor: pointer; font-weight: 600; }
+.bulk-apply:disabled { opacity: 0.5; cursor: default; }
+.bulk-cancel { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+.col-sel { width: 28px; text-align: center; }
+.col-sel input { cursor: pointer; }
+tr.row-selected { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* Tela de atualizações (OTA) */
+.update-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; }
+.update-card p { margin: 0 0 6px; }
+.update-card .actions button:disabled { opacity: 0.5; cursor: default; }
+.update-card .btn-link { color: var(--accent); align-self: center; }
+.progress { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+.progress-bar { height: 100%; background: var(--accent); transition: width 0.2s; }
+.sidebar-link .dot { color: var(--tier-native); margin-left: 4px; }
 
 .system { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; }
 .system summary { cursor: pointer; color: var(--muted); font-size: 12px; }

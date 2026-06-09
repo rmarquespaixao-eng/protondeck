@@ -5,7 +5,7 @@
       <span class="page-sub">Configure provider e modelo para Diagnosticar / Sugerir / Resolver problema com IA.</span>
     </div>
 
-    <p class="meta" style="margin-bottom:12px">O system prompt do agente é cacheado por 5 minutos no Anthropic (cache_control ephemeral), reduzindo o custo de cada chamada repetida em ~90%. OpenAI cacheia automaticamente prompts &gt; 1024 tokens.</p>
+    <p class="meta" style="margin-bottom:12px">O system prompt do agente é cacheado por 5 minutos no Anthropic e no DeepSeek (cache_control ephemeral, endpoint Anthropic-compat), reduzindo o custo de cada chamada repetida em ~90%. OpenAI cacheia automaticamente prompts &gt; 1024 tokens.</p>
 
     <form class="ai-settings-form" @submit.prevent="save">
 
@@ -14,6 +14,7 @@
         <select v-model="form.provider" required @change="onProviderChange">
           <option value="anthropic">Anthropic (Claude) — cache + tools recomendado</option>
           <option value="openai">OpenAI (GPT) — cache automático + tools</option>
+          <option value="deepseek">DeepSeek — barato, cache automático + tools</option>
           <option value="ollama">Ollama (local — sem custo, sem tools)</option>
         </select>
       </label>
@@ -67,6 +68,7 @@
       <ul style="color:var(--muted);font-size:13px">
         <li><strong>Anthropic:</strong> gere chave em <code>console.anthropic.com</code> → API Keys. <strong>Cache + tools</strong> habilitados — economia máxima de tokens.</li>
         <li><strong>OpenAI:</strong> gere chave em <code>platform.openai.com/api-keys</code>. Cache automático nos prompts longos.</li>
+        <li><strong>DeepSeek:</strong> gere chave em <code>platform.deepseek.com</code> → API Keys. Usa o endpoint Anthropic-compat (<code>api.deepseek.com/anthropic</code>) — <strong>cache + tools</strong> iguais ao Anthropic, bem mais barato. Modelos <code>deepseek-v4-pro</code> / <code>deepseek-v4-flash</code>.</li>
         <li><strong>Ollama (local):</strong> instale <code>ollama</code> e rode <code>ollama pull qwen2.5-coder:7b</code>. Zero custo. <strong>Sem tools</strong> — usa só single-shot.</li>
         <li>Cache de resposta no SQLite: 24h por (jogo + provider + modelo + config). Repetições não custam.</li>
       </ul>

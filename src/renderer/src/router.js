@@ -10,6 +10,7 @@ const routes = [
   { path: '/settings/ai', name: 'ai', meta: { active: 'ai' }, component: () => import('./views/AiSettingsView.vue') },
   { path: '/system', name: 'system', meta: { active: 'system' }, component: () => import('./views/SystemView.vue') },
   { path: '/backup', name: 'backup', meta: { active: 'backup' }, component: () => import('./views/BackupView.vue') },
+  { path: '/updates', name: 'updates', meta: { active: 'updates' }, component: () => import('./views/UpdatesView.vue') },
 ]
 
 export const router = createRouter({

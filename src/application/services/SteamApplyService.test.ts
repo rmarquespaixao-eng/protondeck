@@ -105,3 +105,41 @@ test('apply: steam rodando → ok=false com reason', async () => {
   assert.equal(r.ok, false);
   if ('reason' in r) assert.match(r.reason ?? '', /rodando/);
 });
+
+test('applyMany: aplica os com override e pula os sem', async () => {
+  const svc = buildSvc();
+  const r = await svc.applyMany(['620', '730']);
+  assert.equal(r.applied, 1);
+  assert.equal(r.skipped, 1);
+  assert.equal(r.failed, 0);
+  assert.equal(r.items.find(i => i.appid === '620')?.status, 'applied');
+  assert.equal(r.items.find(i => i.appid === '730')?.status, 'skipped');
+});
+
+test('applyMany: appid inexistente vira failed (não derruba o lote)', async () => {
+  const svc = buildSvc();
+  const r = await svc.applyMany(['620', '999']);
+  assert.equal(r.applied, 1);
+  assert.equal(r.failed, 1);
+  assert.equal(r.items.find(i => i.appid === '999')?.status, 'failed');
+});
+
+test('applyMany: deduplica appids repetidos', async () => {
+  const svc = buildSvc();
+  const r = await svc.applyMany(['620', '620', '620']);
+  assert.equal(r.items.length, 1);
+  assert.equal(r.applied, 1);
+});
+
+test('applyMany: sem steam_config → lança', async () => {
+  const svc = buildSvc({ configured: false });
+  await assert.rejects(() => svc.applyMany(['620']), /credentials/i);
+});
+
+test('applyMany: propaga steamWasRunning se algum apply marcou', async () => {
+  const svc = buildSvc({
+    applyResult: { ok: true, path: '/tmp/x', steamWasRunning: true },
+  });
+  const r = await svc.applyMany(['620']);
+  assert.equal(r.steamWasRunning, true);
+});

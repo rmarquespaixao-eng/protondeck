@@ -20,6 +20,7 @@ const api = {
     widescreen: (appid: string, force = false) => ipcRenderer.invoke('games:widescreen', { appid, force }),
     steamLaunch: (appid: string) => ipcRenderer.invoke('games:steamLaunch', appid),
     applySteam: (appid: string) => ipcRenderer.invoke('games:applySteam', appid),
+    applySteamMany: (appids: string[]) => ipcRenderer.invoke('games:applySteamMany', appids),
   },
   sync: {
     run: () => ipcRenderer.invoke('sync:run'),
@@ -63,6 +64,17 @@ const api = {
     export: () => ipcRenderer.invoke('db:export'),
     importPreview: () => ipcRenderer.invoke('db:importPreview'),
     importApply: (path: string) => ipcRenderer.invoke('db:importApply', path),
+  },
+  updater: {
+    state: () => ipcRenderer.invoke('updater:state'),
+    check: () => ipcRenderer.invoke('updater:check'),
+    install: () => ipcRenderer.invoke('updater:install'),
+    // streaming de estado: cb recebe o UpdaterState a cada mudança. Retorna unsubscribe.
+    onEvent: (cb: (state: unknown) => void) => {
+      const listener = (_e: unknown, st: unknown) => cb(st);
+      ipcRenderer.on('updater:event', listener);
+      return () => ipcRenderer.removeListener('updater:event', listener);
+    },
   },
 };
 

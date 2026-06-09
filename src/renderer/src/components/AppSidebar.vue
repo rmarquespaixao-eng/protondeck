@@ -33,6 +33,10 @@
     <router-link to="/backup" class="sidebar-link" :class="{ active: active === 'backup' }">
       <span class="icon">⇅</span> Backup &amp; Import
     </router-link>
+    <router-link to="/updates" class="sidebar-link" :class="{ active: active === 'updates' }">
+      <span class="icon">⟳</span> Atualizações
+      <span v-if="updateReady" class="dot" title="atualização disponível">●</span>
+    </router-link>
 
     <div class="sidebar-footer">
       <button
@@ -45,13 +49,15 @@
         <span v-if="syncing" class="pd-spinner" aria-hidden="true"></span>
         {{ syncing ? 'Sincronizando...' : '↻ Sync biblioteca' }}
       </button>
-      <div class="sidebar-version">v{{ version }}</div>
+      <router-link to="/updates" class="sidebar-version">
+        v{{ version }}<span v-if="updateReady" class="dot"> ●</span>
+      </router-link>
     </div>
   </aside>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, call, toast } from '../api'
 
@@ -61,9 +67,17 @@ const active = computed(() => route.meta.active)
 const syncing = ref(false)
 const version = ref('0.2.3')
 
+// Badge "atualização disponível" — reflete o UpdaterState do main.
+const updateReady = ref(false)
+let unsubUpdater = null
+function reflectUpdate(st) { updateReady.value = st?.status === 'available' || st?.status === 'downloaded' }
+
 onMounted(async () => {
   try { version.value = await api.app.version() } catch { /* noop */ }
+  try { reflectUpdate(await api.updater.state()) } catch { /* noop */ }
+  try { unsubUpdater = api.updater.onEvent(reflectUpdate) } catch { /* noop */ }
 })
+onUnmounted(() => { if (unsubUpdater) unsubUpdater() })
 
 async function doSync() {
   syncing.value = true

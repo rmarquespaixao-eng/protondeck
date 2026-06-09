@@ -38,13 +38,10 @@ jobs:
       - name: Bundle (electron-vite)
         run: npm run build
 
-      - name: Empacota Linux (AppImage + deb)
-        run: npx electron-builder --linux --publish never
-
-      - name: GitHub Release com os instaladores
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release/*.AppImage
-            release/*.deb
-          fail_on_unmatched_files: true
+      # electron-builder empacota E publica no GitHub Release: AppImage, deb e o
+      # latest-linux.yml (metadata que o auto-updater do app lê pra detectar versão
+      # nova). releaseType=release (em package.json) publica direto, sem ficar draft.
+      - name: Empacota + publica (AppImage + deb + latest-linux.yml)
+        run: npx electron-builder --linux --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

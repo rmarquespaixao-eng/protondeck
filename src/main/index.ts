@@ -2,6 +2,7 @@ import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'node:path';
 import { buildComposition, type Composition } from '../composition.js';
 import { registerIpc } from '../adapters/in/ipc/handlers.js';
+import { registerUpdater } from './updater.js';
 
 // Processo main do Electron. Diferente da versão antiga (que embarcava um
 // servidor Fastify e abria o browser num localhost), aqui o renderer Vue fala
@@ -60,6 +61,7 @@ if (!app.requestSingleInstanceLock()) {
     process.env.PROTONDECK_COMMUNITY_CACHE ??= join(app.getPath('userData'), 'community-cache');
     composition = buildComposition({ dbPath: join(app.getPath('userData'), 'panel.db') });
     registerIpc(composition, () => mainWindow);
+    registerUpdater(() => mainWindow);
 
     createWindow();
     app.on('activate', () => {
